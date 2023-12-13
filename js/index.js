@@ -366,6 +366,7 @@ function menu() {
     canvas2.style.display = 'none';
 }
 function savescreen(save) {
+    confirmation[2].isSave(save);
     for (let i = 0; i < document.getElementsByClassName('warning-box').length; i++) {
         document.getElementsByClassName('warning-box')[i].style.display = 'none';
     }
@@ -825,6 +826,14 @@ function save(bindex) {
             localtier.push({ tier: unn.tier, description: unn.description });
         }
     }
+    for (const k of kingdoms) {
+        k.borders = Array.from(k.borders);
+    }
+    localStorage.setItem('kingdoms' + bindex, JSON.stringify(kingdoms));
+
+    for (const k of kingdoms) {
+        k.borders = new Set(k.borders);
+    }
     save_slot = bindex;
     const localmarketstats = [];
     for (const item of m.marketselections) {
@@ -836,7 +845,15 @@ function save(bindex) {
     }
     localStorage.setItem(
         'griditems' + bindex,
-        JSON.stringify({ grid, roadgrid, rivergrid, hillgrid, gridstats })
+        JSON.stringify({
+            grid,
+            roadgrid,
+            gridstats,
+            tilestats,
+            loadedchunks,
+            sutibleRaiderSpawns: Array.from(sutibleRaiderSpawns),
+            playerBorders: Array.from(playerBorders),
+        })
     );
     localStorage.setItem(
         'scrollinfo' + bindex,
@@ -852,6 +869,8 @@ function save(bindex) {
             wars,
             megatemple,
             xp,
+            armyGroups,
+            divisions,
             totalxp,
             techstats,
             research_points,
@@ -891,15 +910,16 @@ function save(bindex) {
 }
 function load(bindex) {
     buildingamounts.length = 0;
-    rivergrid.length = 0;
-    gridstats.length = 0;
+    tilestats = {};
     grid.length = 0;
-    hillgrid.length = 0;
     marketitems.length = 0;
     unlocked.length = 0;
     wars.length = 0;
+    kingdoms.length = 0;
+    playerBorders.clear();
     p.cities.length = 0;
-    for (const el of JSON.parse(localStorage.getItem('griditems' + bindex)).grid) {
+    const griditems = JSON.parse(localStorage.getItem('griditems' + bindex));
+    for (const el of griditems.grid) {
         grid.push(el);
     }
     const localmarketstats = JSON.parse(localStorage.getItem('marketstats' + bindex));
@@ -909,69 +929,93 @@ function load(bindex) {
         m.marketselections[i].stock = localmarketstats[i].stock;
     }
     const localscrolldata = JSON.parse(localStorage.getItem('scrollinfo' + bindex));
-    resources = JSON.parse(localStorage.getItem('pstats' + bindex)).resources;
-    weathermod = JSON.parse(localStorage.getItem('pstats' + bindex)).weathermod;
-    currentpop = JSON.parse(localStorage.getItem('pstats' + bindex)).currentpop;
-    reputation = JSON.parse(localStorage.getItem('pstats' + bindex)).reputation;
-    xp = JSON.parse(localStorage.getItem('pstats' + bindex)).xp;
-    totalxp = JSON.parse(localStorage.getItem('pstats' + bindex)).totalxp;
-    siege = JSON.parse(localStorage.getItem('pstats' + bindex)).siege;
-    megatemple = JSON.parse(localStorage.getItem('pstats' + bindex)).megatemple;
-    outofrange = JSON.parse(localStorage.getItem('pstats' + bindex)).outofrange;
-    for (const war of JSON.parse(localStorage.getItem('pstats' + bindex)).wars) {
+    const pstats = JSON.parse(localStorage.getItem('pstats' + bindex));
+    resources = pstats.resources;
+    weathermod = pstats.weathermod;
+    currentpop = pstats.currentpop;
+    reputation = pstats.reputation;
+    xp = pstats.xp;
+    totalxp = pstats.totalxp;
+    siege = pstats.siege;
+    megatemple = pstats.megatemple;
+    outofrange = pstats.outofrange;
+    playerBorders = new Set(griditems.playerBorders);
+    sutibleRaiderSpawns = new Set(griditems.sutibleRaiderSpawns);
+    const localKingdoms = JSON.parse(localStorage.getItem('kingdoms' + bindex));
+    for (const k of localKingdoms) {
+        kingdoms.push(k);
+    }
+    for (const k of kingdoms) {
+        ctx4.fillStyle = `rgba(${k.fillColor.r}, ${k.fillColor.g}, ${k.fillColor.b}, 0.7)`;
+
+        for (const b of k.borders) {
+            const pos = tiledecode(b);
+            ctx4.fillRect(pos.x, pos.y, 1, 1);
+        }
+        k.borders = new Set(k.borders);
+    }
+    for (const p of playerBorders) {
+        ctx5.fillStyle = 'rgba(0,0,255,0.7)';
+        ctx5.fillRect(tiledecode(p).x, tiledecode(p).y, 1, 1);
+    }
+    for (const d of pstats.divisions) {
+        divisions.push(d);
+    }
+    for (const war of pstats.wars) {
         wars.push(war);
     }
-    for (const obj in JSON.parse(localStorage.getItem('pstats' + bindex)).techstats) {
-        techstats[obj] = JSON.parse(localStorage.getItem('pstats' + bindex)).techstats[obj];
+    for (const obj in pstats.techstats) {
+        techstats[obj] = pstats.techstats[obj];
     }
 
-    for (const obj in JSON.parse(localStorage.getItem('griditems' + bindex)).roadgrid) {
-        roadgrid[obj] = JSON.parse(localStorage.getItem('griditems' + bindex)).roadgrid[obj];
+    for (const obj in griditems.roadgrid) {
+        roadgrid[obj] = griditems.roadgrid[obj];
     }
 
     i = 0;
     for (const un of tech) {
         for (const unn of un) {
-            unn.tier = JSON.parse(localStorage.getItem('pstats' + bindex)).localtier[i].tier;
+            unn.tier = pstats.localtier[i].tier;
 
-            unn.description = JSON.parse(localStorage.getItem('pstats' + bindex)).localtier[
-                i
-            ].description;
+            unn.description = pstats.localtier[i].description;
             i += 1;
         }
     }
-
-    research_points = JSON.parse(localStorage.getItem('pstats' + bindex)).research_points;
-    for (const el of JSON.parse(localStorage.getItem('griditems' + bindex)).rivergrid) {
-        rivergrid.push(el);
+    for (const l of griditems.loadedchunks) {
+        loadedchunks.push(l);
     }
-    for (const el of JSON.parse(localStorage.getItem('griditems' + bindex)).hillgrid) {
-        hillgrid.push(el);
-    }
-    for (const el of JSON.parse(localStorage.getItem('griditems' + bindex)).gridstats) {
+    research_points = pstats.research_points;
+    armyGroups = pstats.armyGroups;
+    for (const el of griditems.gridstats) {
         gridstats.push(el);
     }
-    const localmod = JSON.parse(localStorage.getItem('pstats' + bindex)).modifiers;
-    for (const el of JSON.parse(localStorage.getItem('pstats' + bindex)).temporaryeffects) {
+    const localmod = pstats.modifiers;
+    for (const el of pstats.temporaryeffects) {
         temporaryeffects.push(el);
     }
     save_slot = JSON.parse(localStorage.getItem('slot' + bindex));
-    difficulty = JSON.parse(localStorage.getItem('pstats' + bindex)).difficulty;
-    for (const increa in JSON.parse(localStorage.getItem('pstats' + bindex)).cities) {
-        p.cities[increa] = JSON.parse(localStorage.getItem('pstats' + bindex)).cities[increa];
+    difficulty = pstats.difficulty;
+    for (const increa in pstats.cities) {
+        p.cities[increa] = pstats.cities[increa];
     }
-    difficultymultiplier = JSON.parse(localStorage.getItem('pstats' + bindex)).difficultymultiplier;
-    for (const el of JSON.parse(localStorage.getItem('pstats' + bindex)).buildingamounts) {
+    difficultymultiplier = pstats.difficultymultiplier;
+    for (const el of pstats.buildingamounts) {
         buildingamounts.push(el);
     }
     i = 0;
-    for (const el of JSON.parse(localStorage.getItem('pstats' + bindex)).unlocked) {
+    for (const el of pstats.unlocked) {
         unlocked.push(el);
         p.pieceROM[i].unlocked = el;
         i++;
     }
     for (const el of JSON.parse(localStorage.getItem('marketitems' + bindex))) {
         marketitems.push(el);
+    }
+    tilestats = griditems.tilestats;
+    for (const tile in tilestats) {
+        const tilePos = tiledecode(tile);
+        ctx3.fillStyle = tiles[tilestats[tile]].color;
+        ctx3.fillRect(tilePos.x, tilePos.y, 1, 1);
     }
     luck = JSON.parse(localStorage.getItem('luck' + bindex));
     weathermod = Math.sin(difficulty / 3) / 10;
@@ -997,7 +1041,6 @@ function load(bindex) {
     if (m.phase > 0) {
         m.marketselections[m.marketselections.length - 1].stock = 0;
     }
-    let j = 0;
     spawnX = localscrolldata[2];
     spawnY = localscrolldata[3];
     scrollX = localscrolldata[0];
@@ -1017,9 +1060,11 @@ function load(bindex) {
     document.getElementById('year_label').innerHTML = 'Year: ' + difficulty;
     displaytab();
     displayUI();
+
     start();
 }
 function newgame(difficult) {
+    ctx4.clearRect(0, 0, 5000, 5000);
     window.onbeforeunload = function () {
         return 'hi';
     };
@@ -1035,14 +1080,15 @@ function newgame(difficult) {
             tech[i][j].tier = 0;
         }
     }
-    rivergrid.length = 0;
+    armyGroups = ['none'];
+    divisions.length = 0;
     gridstats.length = 0;
+    tilestats = {};
     grid.length = 0;
     weathermod = 0;
     weather = 0;
     wars.length = 0;
     displaytab();
-    hillgrid.length = 0;
     temporaryeffects.length = 0;
     buildingamounts.length = 0;
     punishamount = 0;
@@ -1084,8 +1130,7 @@ function newgame(difficult) {
     military = 0;
     xp = 0;
     totalxp = 50;
-    rivergrid.length = 0;
-    hillgrid.length = 0;
+    tilestats = {};
     p.cities.length = 0;
     m.assissin = 0;
     m.spy = 0;
@@ -1097,36 +1142,52 @@ function newgame(difficult) {
     m.shield = 0;
     grid.length = 0;
     gridstats.length = 0;
+    seed = Math.random() * 10 ** 20;
+    perlin = new Perlin(nodes[0], nodes[0], seed);
+    perlin2 = new Perlin(nodes[1], nodes[1], seed + 1);
+    perlin3 = new Perlin(nodes[2], nodes[2], seed + 2);
+    perlin4 = new Perlin(nodes[3], nodes[3], seed + 3);
+    perlin5 = new Perlin(nodes[4], nodes[4], seed + 4);
+    perlin6 = new Perlin(nodes[5], nodes[5], seed + 5);
+    perlin7 = new Perlin(nodes[6], nodes[6], seed + 6);
+    perlin8 = new Perlin(nodes[7], nodes[7], seed + 7);
+    perlin9 = new Perlin(nodes[5], nodes[5], seed + 8);
+    perlin10 = new Perlin(nodes[6], nodes[6], seed + 9);
+    perlin11 = new Perlin(nodes[7], nodes[7], seed + 10);
+    perlin12 = new Perlin(nodes[8], nodes[8], seed + 11);
+    perlin13 = new Perlin(nodes[9], nodes[9], seed + 12);
+    perlin14 = new Perlin(nodes[10], nodes[10], seed + 13);
+    perlin15 = new Perlin(nodes[11], nodes[11], seed + 14);
+    perlin16 = new Perlin(nodes[12], nodes[12], seed + 15);
+    perlin17 = new Perlin(nodes[12], nodes[12], seed + 16);
+    perlin18 = new Perlin(nodes[13], nodes[13], seed + 17);
+    generaterivers();
+
+    for (let i = Math.floor(scrollY / 50) - 2; i < Math.ceil((scrollY + heightmax) / 50) + 2; i++) {
+        for (
+            let j = Math.floor(scrollX / 50) - 2;
+            j < Math.ceil((scrollX + widthmax) / 50) + 2;
+            j++
+        ) {
+            if (!loadedchunks.includes(tilecode(j, i))) {
+                rerenderchunks(j * 50, i * 50, true);
+            }
+        }
+    }
+    for (let i = 0; i < 500; i += 40) {
+        for (let j = 0; j < 500; j += 40) {
+            if (getHeight(i, j) > 0.02) {
+                sutibleRaiderSpawns.add(tilecode(i, j));
+            }
+        }
+    }
+    const randIndex = getRandomInt(0, sutibleSpawns.length - 1);
+    kingdoms.push(new kingdom(generateWord(dataObj), sutibleSpawns[randIndex]));
+    sutibleSpawns.splice(randIndex);
     ctx2.clearRect(0, 0, screen.width, screen.height);
-    for (let i = 0; i < 500; i++) {
-        rivergrid.push([]);
-    }
-    for (let i = 0; i < 500; i++) {
-        hillgrid.push([]);
-    }
+
     for (let i = 0; i < 500; i++) {
         grid.push([]);
-    }
-
-    for (let h = 0, rand = getRandomInt(8, 10); h < rand; h++) {
-        generateriver((450 / rand) * h, 0, 0, 0, getRandomInt(2, 5));
-    }
-    selectmarketitems();
-    generateblob(spawnX + Math.floor(widthmax / 2), spawnY + Math.floor(heightmax / 2), false);
-    let xspawn = 50;
-    let yspawn = 50;
-    for (let h = 0, rand = getRandomInt(40, 50); h < rand; h++) {
-        generateblob(
-            xspawn + getRandomInt(-30, 30),
-            yspawn + getRandomInt(-30, 30),
-            getRandomInt(0, 30) == 0
-        );
-
-        xspawn += 45;
-        if (xspawn > 450) {
-            xspawn = 50;
-            yspawn += 50;
-        }
     }
 
     if (psettings.notutorial) {
@@ -1136,6 +1197,7 @@ function newgame(difficult) {
     } else {
         displaypopup(3, confirmation);
     }
+    render();
     document.getElementById('year_label').innerHTML = 'Year: ' + difficulty;
 }
 function getRandomInt(min, max) {
@@ -1143,7 +1205,10 @@ function getRandomInt(min, max) {
     max = Math.floor(max);
     return Math.round(Math.random() * (max - min)) + min;
 }
-
+function cropDecimal(num, fixed) {
+    var re = new RegExp('^-?\\d+(?:.\\d{0,' + (fixed || -1) + '})?');
+    return num.toString().match(re)[0];
+}
 function shorten(number) {
     if (number.toString().includes('e')) {
         return number;
@@ -1177,7 +1242,7 @@ function shorten(number) {
             break;
     }
 
-    returnnum = returnnum.toFixed(2);
+    returnnum = cropDecimal(returnnum, 2);
 
     while (returnnum.includes('.') && returnnum[returnnum.length - 1] === '0') {
         returnnum = returnnum.slice(0, returnnum.length - 1);
@@ -1188,6 +1253,7 @@ function shorten(number) {
     return returnnum + endsymbol;
 }
 function start() {
+    battling = false;
     tech_music.pause();
     if (m.phase > 1) {
         boss_music.play();
@@ -1220,6 +1286,7 @@ function start() {
     document.getElementById('info').style.display = 'none';
     document.getElementById('achievement-flex').style.display = 'none';
     document.getElementById('back_button').hidden = true;
+    document.getElementById('startBattle').hidden = true;
 
     document.getElementById('techlinecontainer').style.display = 'none';
     document.getElementById('title_start').style.display = 'none';
@@ -1228,6 +1295,9 @@ function start() {
     document.getElementById('market-flex').style.display = 'none';
     document.getElementById('save-flex').style.display = 'none';
     document.getElementById('select-grid').style.display = 'flex';
+    document.getElementById('divisionsFlex').style.display = 'none';
+    document.getElementById('bar').style.display = 'none';
+    document.getElementById('placeGrid').style.display = 'none';
     canvas.style.display = 'block';
     canvas2.style.display = 'block';
     displayUI();
@@ -1244,5 +1314,12 @@ function start() {
 function move(x, y) {
     scrollX += x;
     scrollY += y;
+    for (let i = Math.floor(scrollY / 50); i < Math.ceil((scrollY + heightmax) / 50); i++) {
+        for (let j = Math.floor(scrollX / 50); j < Math.ceil((scrollX + widthmax) / 50); j++) {
+            if (!loadedchunks.includes(tilecode(j, i))) {
+                rerenderchunks(j * 50, i * 50);
+            }
+        }
+    }
     render();
 }
