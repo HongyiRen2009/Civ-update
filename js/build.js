@@ -242,7 +242,7 @@ const p = {
             name: 'Military Base',
             letter: 'MB',
             description:
-                'A building for military operations that increases military power by 20. Double effectiveness if entirely on a hill. Requires 6 resources to construct and 3 people operating it. Requires 4 resources every turn to maintain.',
+                'A building for military operations that houses your divisions. Can house 20 personnel. Requires 12 resources to construct.',
             unlocked: false,
             piecepositions: [
                 { x: 1, y: 1, img: { dx: 127, dy: 106 } },
@@ -254,20 +254,18 @@ const p = {
             near: 'building',
             tab: 'Military',
             effect() {
-                p.military = 20 * (p.entirehill ? 2 : 1);
-                resources -= 6;
-                p.resources -= 4;
-                unemployed -= 3;
+                p.military = 20;
+                resources -= 12;
             },
             requires() {
-                return resources >= 6 && unemployed >= 3;
+                return resources >= 12;
             },
         },
         {
             name: 'Barracks',
             letter: 'BR',
             description:
-                'A building to store weapons and train soldiers, increasing your military 10%. Requires 10 resources to construct and 10 people operating it. Gains no bonuses for being on a hill. Requires 20 resources every turn to maintain.',
+                'A building to train soldiers, passively leveling them up. Requires 30 resources to construct.',
             unlocked: false,
             piecepositions: [
                 { x: -1, y: 0, img: { dx: 85, dy: 22 } },
@@ -282,20 +280,17 @@ const p = {
             near: 'building',
             tab: 'Military',
             effect() {
-                modifiers.military += 1;
-                resources -= 20;
-                p.resources -= 20;
-                unemployed -= 10;
+                resources -= 30;
             },
             requires() {
-                return resources >= 20 && unemployed >= 10;
+                return resources >= 30;
             },
         },
         {
             name: 'Fortress',
             letter: 'FT',
             description:
-                'A massive structure that offers substantial defense. Increases military power by 300. Requires 70 resources to construct and 40 people operating it. Double military if on a hill. Requires 30 resources every year to maintain.',
+                'A massive structure that offers substantial defense. Can house 300 personnel. Requires 100 resources to construct.',
             unlocked: false,
             piecepositions: [
                 { x: -1, y: 0, img: { dx: 85, dy: 148 } },
@@ -311,13 +306,11 @@ const p = {
             near: 'building',
             tab: 'Military',
             effect() {
-                p.military = Math.floor(300 * (p.entirehill ? 2 : 1) * (1 + techstats.archery));
-                resources -= 70;
-                p.resources -= 30;
-                unemployed -= 40;
+                p.military = 300;
+                resources -= 100;
             },
             requires() {
-                return resources >= 70 && unemployed >= 40;
+                return resources >= 100;
             },
         },
         {
@@ -464,17 +457,32 @@ const p = {
             tab: 'Misc',
             amountbought: 0,
             effect() {
-                resources -= Math.ceil(Math.max((difficulty - 10) ** 2.7 / 100, 4));
+                resources -= Math.ceil(Math.max((difficulty - 10) ** 2.7 / 25, 4));
                 this.amountbought += 1;
                 p.cities.push({
-                    x: position.x / 20,
-                    y: position.y / 20,
+                    x: position.x,
+                    y: position.y,
                 });
+                for (let i = -16; i <= 16; i++) {
+                    for (let j = -16; j <= 16; j++) {
+                        if (
+                            distance(i, j, 0, 0) < 15 &&
+                            tilestats[tilecode(position.x + j, position.y + i)] != undefined &&
+                            tilestats[tilecode(position.x + j, position.y + i)] != 4 &&
+                            !hasBorder({ x: position.x + j, y: position.y + i })
+                        ) {
+                            playerBorders.add(tilecode(position.x + j, position.y + i));
+                            ctx5.fillStyle = 'rgba(0,0,255,0.7)';
+                            ctx5.fillRect(position.x + j, position.y + i, 1, 1);
+                        }
+                    }
+                }
             },
             requires() {
                 return (
-                    resources >= Math.ceil(Math.max((difficulty - 10) ** 2.7 / 100, 4)) &&
-                    difficulty >= 10
+                    resources >= Math.ceil(Math.max((difficulty - 10) ** 2.7 / 25, 4)) &&
+                    difficulty >= 10 &&
+                    p.cities.length / 5 < difficulty
                 );
             },
         },
@@ -580,7 +588,9 @@ function removebuildings(intensity = 4, onhill = false) {
 
         for (let j = 0; j != buildingschecked[i].positions.length; j++) {
             if (
-                hillgrid[buildingschecked[i].positions[j].y / 20].includes(
+                exists(
+                    'hill',
+                    buildingschecked[i].positions[j].y,
                     buildingschecked[i].positions[j].x
                 )
             ) {
@@ -604,9 +614,6 @@ function removebuildings(intensity = 4, onhill = false) {
         buildingamounts[gridstats[randomb].index] -= 1;
         gridstats[randomb].disabled = true;
         switch (gridstats[randomb].index) {
-            case '11':
-                modifiers.military -= 1;
-                break;
             case '18':
                 for (let j = 0; j < p.cities.length; j++) {
                     if (
@@ -640,22 +647,24 @@ function isallowed() {
     localallowed = false;
     for (let i = 0, len = piece.length; i != len; i++) {
         if (
-            position.x / 20 - widthmax / 2 + piece[i].x - spawnX > max.right ||
-            position.x / 20 - widthmax / 2 + piece[i].x - spawnX < max.left ||
-            position.y / 20 - heightmax / 2 + piece[i].y - spawnY > max.down ||
-            position.y / 20 - heightmax / 2 + piece[i].y - spawnY < max.up
+            position.x - widthmax / 2 + piece[i].x - spawnX > max.right ||
+            position.x - widthmax / 2 + piece[i].x - spawnX < max.left ||
+            position.y - heightmax / 2 + piece[i].y - spawnY > max.down ||
+            position.y - heightmax / 2 + piece[i].y - spawnY < max.up
         ) {
             return false;
         }
-        if (
-            p.river &&
-            !rivergrid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20)
-        ) {
+        if (tilestats[tilecode(position.x + piece[i].x, position.y + piece[i].y)] == undefined) {
+            return false;
+        }
+        if (exists('lake', position.x + piece[i].x, position.y + piece[i].y)) {
+            return false;
+        }
+        if (p.river && !exists('river', position.x + piece[i].x, position.y + piece[i].y)) {
             return false;
         } else if (
-            grid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20) ||
-            (!p.river &&
-                rivergrid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20))
+            grid[position.y + piece[i].y].includes(position.x + piece[i].x) ||
+            (!p.river && exists('river', position.x + piece[i].x, position.y + piece[i].y))
         ) {
             return false;
         }
@@ -663,33 +672,33 @@ function isallowed() {
             p.pieceROM[p_index].near.includes('!hill') ||
             p.pieceROM[p_index].near.includes('not')
         ) {
-            if (hillgrid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20)) {
+            if (exists('hill', position.x + piece[i].x, position.y + piece[i].y)) {
                 return false;
             }
         }
         if (p.pieceROM[p_index].near.includes('entire')) {
-            if (!hillgrid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20)) {
+            if (exists('hill', position.x + piece[i].x, position.y + piece[i].y)) {
                 return false;
             }
         }
-
+        for (const k of kingdoms) {
+            if (k.borders.has(tilecode(position.x + piece[i].x, position.y + piece[i].y))) {
+                return false;
+            }
+        }
         if (!first_turn) {
-            if (grid[position.y / 20 + piece[i].y].includes(20 + position.x + piece[i].x * 20)) {
+            if (grid[position.y + piece[i].y].includes(1 + position.x + piece[i].x)) {
+                localallowed = true;
+            } else if (grid[position.y + piece[i].y].includes(-1 + position.x + piece[i].x)) {
                 localallowed = true;
             } else if (
-                grid[position.y / 20 + piece[i].y].includes(-20 + position.x + piece[i].x * 20)
-            ) {
-                localallowed = true;
-            } else if (
-                grid[Math.min(grid.length - 1, 1 + position.y / 20 + piece[i].y)].includes(
-                    position.x + piece[i].x * 20
+                grid[Math.min(grid.length - 1, 1 + position.y + piece[i].y)].includes(
+                    position.x + piece[i].x
                 )
             ) {
                 localallowed = true;
             } else if (
-                grid[Math.max(0, -1 + position.y / 20 + piece[i].y)].includes(
-                    position.x + piece[i].x * 20
-                )
+                grid[Math.max(0, -1 + position.y + piece[i].y)].includes(position.x + piece[i].x)
             ) {
                 localallowed = true;
             }
@@ -707,20 +716,16 @@ function isallowed() {
     }
     for (let i = 0; i != piece.length; i++) {
         if (p.pieceROM[p_index].near.includes('river')) {
-            if (
-                rivergrid[position.y / 20 + piece[i].y].includes(20 + position.x + piece[i].x * 20)
-            ) {
+            if (exists('river', position.x + piece[i].x, 1 + position.y + piece[i].y)) {
                 localallowed = true;
                 break;
-            } else if (
-                rivergrid[position.y / 20 + piece[i].y].includes(-20 + position.x + piece[i].x * 20)
-            ) {
+            } else if (exists('river', position.x + piece[i].x, -1 + position.y + piece[i].y)) {
                 localallowed = true;
                 break;
             }
         }
         if (p.pieceROM[p_index].near == 'hill') {
-            if (hillgrid[position.y / 20 + piece[i].y].includes(position.x + piece[i].x * 20)) {
+            if (exists('hill', position.x + piece[i].x, position.y + piece[i].y)) {
                 localallowed = true;
                 break;
             }
@@ -729,106 +734,139 @@ function isallowed() {
     return localallowed;
 }
 canvas.onmousemove = function (event) {
-    if (ispainting) {
-        position = {
-            x: (Math.ceil(event.clientX / 20) - 1 + scrollX) * 20,
-            y: (Math.round(event.clientY / 20) - 3 + scrollY) * 20,
-        };
-        if (position.x != oldposition.x || position.y != oldposition.y) {
-            allowed = false;
-            oldposition.x = position.x;
-            oldposition.y = position.y;
+    if (battling) {
+        mousePos = { x: event.clientX, y: event.clientY };
+        if (isPlacing) {
+            if (isPlacingArmies) {
+                if (
+                    convertToPlaceCoords(mousePos.x, false) ==
+                        convertToPlaceCoords(oldMousePos, false) &&
+                    convertToPlaceCoords(mousePos.y, false) ==
+                        convertToPlaceCoords(oldMousePos, false)
+                ) {
+                    return;
+                }
+                oldMousePos = { x: mousePos.x, y: mousePos.y };
+                renderArmyUI();
+            }
+        } else if (isSelecting) {
+            renderArmyUI();
+        }
+    } else {
+        if (ispainting && zoom >= 15) {
+            position = {
+                x: Math.ceil(event.clientX / zoom) - Math.round((1 * 20) / zoom) + scrollX,
+                y: Math.round(event.clientY / zoom) - Math.round((3 * 20) / zoom) + scrollY,
+            };
+            if (position.x != oldposition.x || position.y != oldposition.y) {
+                allowed = false;
+                oldposition.x = position.x;
+                oldposition.y = position.y;
 
-            render();
-            ctx.beginPath();
+                render();
+                ctx.beginPath();
 
-            allowed = isallowed();
+                allowed = isallowed();
 
-            for (len = piece.length, i = 0; i != len; i++) {
-                if (!allowed) {
-                    ctx.fillStyle = 'rgba(255,0,0,0.5)';
-                    if (psettings.noimage) {
-                        ctx.fillText(
-                            letter,
-                            position.x + 10 - letter.length * 4 - scrollX * 20 + piece[i].x * 20,
-                            position.y + 10 - scrollY * 20 + piece[i].y * 20
-                        );
-                    } else {
-                        ctx.drawImage(
-                            buildimg,
-                            p.pieceROM[p_index].piecepositions[i].img.dx,
-                            p.pieceROM[p_index].piecepositions[i].img.dy,
-                            20,
-                            20,
-                            position.x - scrollX * 20 + piece[i].x * 20,
-                            position.y + (-scrollY + piece[i].y) * 20,
-                            20,
-                            20
-                        );
-                    }
+                for (len = piece.length, i = 0; i != len; i++) {
+                    if (!allowed) {
+                        ctx.fillStyle = 'rgba(255,0,0,0.5)';
+                        if (psettings.noimage) {
+                            ctx.fillText(
+                                letter,
+                                position.x * zoom +
+                                    10 -
+                                    letter.length * 4 -
+                                    scrollX * zoom +
+                                    piece[i].x * zoom,
+                                position.y * zoom + 10 - scrollY * zoom + piece[i].y * zoom
+                            );
+                        } else {
+                            ctx.drawImage(
+                                buildimg,
+                                p.pieceROM[p_index].piecepositions[i].img.dx,
+                                p.pieceROM[p_index].piecepositions[i].img.dy,
+                                20,
+                                20,
+                                (position.x - scrollX + piece[i].x) * zoom,
+                                (position.y - scrollY + piece[i].y) * zoom,
+                                zoom,
+                                zoom
+                            );
+                        }
 
-                    ctx.fillRect(
-                        position.x - scrollX * 20 + piece[i].x * 20,
-                        position.y + (-scrollY + piece[i].y) * 20,
-                        20,
-                        20
-                    );
-                } else {
-                    ctx.strokeStyle = 'black';
-                    if (psettings.noimage) {
-                        ctx.fillText(
-                            letter,
-                            position.x + 10 - letter.length * 4 - scrollX * 20 + piece[i].x * 20,
-                            position.y + 10 - scrollY * 20 + piece[i].y * 20
-                        );
-                        ctx.rect(
-                            position.x - scrollX * 20 + piece[i].x * 20,
-                            position.y + (-scrollY + piece[i].y) * 20,
-                            20,
-                            20
-                        );
-                    } else {
-                        ctx.fillStyle = 'rgba(0,255,0,0.7)';
                         ctx.fillRect(
-                            position.x - scrollX * 20 + piece[i].x * 20,
-                            position.y + (-scrollY + piece[i].y) * 20,
-                            20,
-                            20
+                            (position.x - scrollX + piece[i].x) * zoom,
+                            (position.y - scrollY + piece[i].y) * zoom,
+                            zoom,
+                            zoom
                         );
+                    } else {
+                        ctx.strokeStyle = 'black';
+                        if (psettings.noimage) {
+                            ctx.fillText(
+                                letter,
+                                position.x +
+                                    10 -
+                                    letter.length * 4 -
+                                    scrollX * zoom +
+                                    piece[i].x * zoom,
+                                position.y * zoom + 10 - scrollY * zoom + piece[i].y * zoom
+                            );
+                            ctx.rect(
+                                (position.x - scrollX + piece[i].x) * zoom,
+                                (position.y + -scrollY + piece[i].y) * zoom,
+                                zoom,
+                                zoom
+                            );
+                        } else {
+                            ctx.fillStyle = 'rgba(0,255,0,0.7)';
+                            ctx.fillRect(
+                                (position.x - scrollX + piece[i].x) * zoom,
+                                (position.y + -scrollY + piece[i].y) * zoom,
+                                zoom,
+                                zoom
+                            );
 
-                        ctx.drawImage(
-                            buildimg,
-                            p.pieceROM[p_index].piecepositions[i].img.dx,
-                            p.pieceROM[p_index].piecepositions[i].img.dy,
-                            20,
-                            20,
-                            position.x - scrollX * 20 + piece[i].x * 20,
-                            position.y + (-scrollY + piece[i].y) * 20,
-                            20,
-                            20
-                        );
+                            ctx.drawImage(
+                                buildimg,
+                                p.pieceROM[p_index].piecepositions[i].img.dx,
+                                p.pieceROM[p_index].piecepositions[i].img.dy,
+                                20,
+                                20,
+                                (position.x - scrollX + piece[i].x) * zoom,
+                                (position.y + -scrollY + piece[i].y) * zoom,
+                                zoom,
+                                zoom
+                            );
+                        }
                     }
                 }
+                ctx.stroke();
             }
+        } else if (removing || repairing) {
+            position = {
+                x: Math.ceil(event.clientX / zoom) - 1 + scrollX,
+                y: Math.floor(event.clientY / zoom) - 3 + scrollY,
+            };
+
+            render();
+
+            ctx.beginPath();
+            if (removing) {
+                ctx.strokeStyle = 'white';
+            } else {
+                ctx.strokeStyle = '#4d4d4d';
+            }
+            ctx.rect(
+                (position.x - scrollX) * zoom,
+                (position.y + -scrollY) * zoom,
+                zoom * (21 / 20),
+                zoom * (21 / 20)
+            );
             ctx.stroke();
+            ctx.closePath();
         }
-    } else if (removing || repairing) {
-        position = {
-            x: (Math.ceil(event.clientX / 20) - 1 + scrollX) * 20,
-            y: (Math.floor(event.clientY / 20) - 3 + scrollY) * 20,
-        };
-
-        render();
-
-        ctx.beginPath();
-        if (removing) {
-            ctx.strokeStyle = 'white';
-        } else {
-            ctx.strokeStyle = '#4d4d4d';
-        }
-        ctx.rect(position.x - scrollX * 20, position.y + -scrollY * 20, 21, 21);
-        ctx.stroke();
-        ctx.closePath();
     }
 };
 function isremoving() {
@@ -852,9 +890,9 @@ function isrepairing() {
 
 function renderclouds() {
     const grd = ctx.createLinearGradient(
-        (spawnX - scrollX) * 20 + screen.width / 2 + max.right * 20,
+        (spawnX - scrollX) * zoom + screen.width / 2 + max.right * zoom,
         0,
-        (spawnX - scrollX) * 20 + screen.width + screen.width / 2 + max.right * 20,
+        (spawnX - scrollX) * zoom + screen.width + screen.width / 2 + max.right * zoom,
         0
     );
     grd.addColorStop(1, '#ffffff');
@@ -863,15 +901,15 @@ function renderclouds() {
     grd.addColorStop(0, 'rgba(255,255,255,0)');
     ctx.fillStyle = grd;
     ctx.fillRect(
-        (spawnX - scrollX) * 20 + screen.width / 2 + max.right * 20,
+        (spawnX - scrollX) * zoom + screen.width / 2 + max.right * zoom,
         0,
         screen.width,
         screen.height
     );
     const ygrd = ctx.createLinearGradient(
-        (spawnX - scrollX) * 20 - screen.width / 2 + max.left * 20,
+        (spawnX - scrollX) * zoom - screen.width / 2 + max.left * zoom,
         0,
-        (spawnX - scrollX) * 20 + screen.width / 2 + max.left * 20,
+        (spawnX - scrollX) * zoom + screen.width / 2 + max.left * zoom,
         0
     );
     ygrd.addColorStop(0, '#ffffff');
@@ -880,16 +918,16 @@ function renderclouds() {
     ygrd.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = ygrd;
     ctx.fillRect(
-        (spawnX - scrollX) * 20 - screen.width / 2 + max.left * 20,
+        (spawnX - scrollX) * zoom - screen.width / 2 + max.left * zoom,
         0,
         screen.width,
         screen.height
     );
     const yxgrd = ctx.createLinearGradient(
         0,
-        -80 + (spawnY - scrollY) * 20 + screen.height / 2 + max.down * 20,
+        -80 + (spawnY - scrollY) * zoom + screen.height / 2 + max.down * zoom,
         0,
-        -80 + (spawnY - scrollY) * 20 + 900 + screen.height / 2 + max.down * 20
+        -80 + (spawnY - scrollY) * zoom + 900 + screen.height / 2 + max.down * zoom
     );
     yxgrd.addColorStop(1, '#ffffff');
     yxgrd.addColorStop(0.25, '#ffffff');
@@ -898,15 +936,15 @@ function renderclouds() {
     ctx.fillStyle = yxgrd;
     ctx.fillRect(
         0,
-        -80 + (spawnY - scrollY) * 20 + screen.height / 2 + max.down * 20,
+        -80 + (spawnY - scrollY) * zoom + screen.height / 2 + max.down * zoom,
         screen.width,
         screen.height
     );
     const xygrd = ctx.createLinearGradient(
         0,
-        -120 + (spawnY - scrollY) * 20 - screen.height / 2 + max.up * 20,
+        -120 + (spawnY - scrollY) * zoom - screen.height / 2 + max.up * zoom,
         0,
-        -120 + (spawnY - scrollY) * 20 + screen.height / 2 + max.up * 20
+        -120 + (spawnY - scrollY) * zoom + screen.height / 2 + max.up * zoom
     );
     xygrd.addColorStop(0, '#ffffff');
     xygrd.addColorStop(0.65, '#ffffff');
@@ -915,7 +953,7 @@ function renderclouds() {
     ctx.fillStyle = xygrd;
     ctx.fillRect(
         0,
-        -120 + (spawnY - scrollY) * 20 - screen.height / 2 + max.up * 20,
+        -120 + (spawnY - scrollY) * zoom - screen.height / 2 + max.up * zoom,
         screen.width,
         screen.height
     );
@@ -937,39 +975,66 @@ function searchrange(lower, higher, list) {
 
     return null;
 }
-function render() {
-    ctx.beginPath();
+function changeZoom(currentZoom) {
+    heightmax = Math.round((screen.height * 0.88) / currentZoom);
+    widthmax = Math.round(screen.width / currentZoom);
+}
 
-    ctx.clearRect(0, 0, screen.width, screen.height);
-    ctx.strokeStyle = 'rgba(0,0,0,1)';
-    ctx.fillStyle = 'rgb(51, 166, 59)';
+function renderBackGround(currentZoom, xScroll, yScroll) {
+    ctx.fillStyle = 'rgb(43,101,236)';
+
     ctx.fillRect(0, 0, screen.width, screen.height);
-    ctx.fillStyle = 'rgb(103, 104, 107)';
-    for (let i = scrollY; i <= Math.min(499, scrollY + heightmax); i++) {
-        for (let j = 0, len = hillgrid[i].length; j < len; j++) {
-            if (
-                hillgrid[i][j] - 20 < scrollX * 20 + widthmax * 20 &&
-                hillgrid[i][j] + 20 > scrollX * 20
-            ) {
-                ctx.fillRect(hillgrid[i][j] - scrollX * 20, (i - scrollY) * 20, 20, 20);
-            }
-        }
-    }
-    ctx.fillStyle = 'rgba(0,0,0,1)';
-    ctx.fillStyle = 'rgb(3,172,252)';
-    for (let i = scrollY; i <= Math.min(499, scrollY + heightmax); i++) {
-        for (let j = 0, len = rivergrid[i].length; j < len; j++) {
-            if (
-                rivergrid[i][j] - 20 < scrollX * 20 + widthmax * 20 &&
-                rivergrid[i][j] + 20 > scrollX * 20
-            ) {
-                ctx.fillRect(rivergrid[i][j] - scrollX * 20, (i - scrollY) * 20, 20, 20);
-            }
-        }
-    }
-    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+        canvas3,
+        xScroll,
+        yScroll,
+        widthmax + 1,
+        heightmax + 2,
+        0,
+        0,
+        (widthmax + 1) * currentZoom,
+        (heightmax + 2) * currentZoom
+    );
+    ctx.drawImage(
+        canvas4,
+        xScroll,
+        yScroll,
+        widthmax + 1,
+        heightmax + 2,
+        0,
+        0,
+        (widthmax + 1) * currentZoom,
+        (heightmax + 2) * currentZoom
+    );
 
-    ctx.closePath();
+    ctx.fillStyle = 'black';
+    ctx.imageSmoothingEnabled = true;
+    ctx.textAlign = 'center';
+
+    ctx.font = `${zoom}px PF Tempesta Five Condensed`;
+    for (const k of kingdoms) {
+        for (const city of k.cities) {
+            ctx.fillText(
+                city.name,
+                (city.x - scrollX) * zoom + zoom / 2,
+                (city.y - scrollY - 1) * zoom + zoom / 2
+            );
+            ctx.beginPath();
+            ctx.arc(
+                (city.x - scrollX) * zoom + zoom / 2,
+                (city.y - scrollY) * zoom + zoom / 2,
+                zoom / 8,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+}
+function render() {
+    renderBackGround(zoom, scrollX, scrollY);
+    ctx.fillStyle = 'rgba(0,0,0,1)';
 
     if (psettings.noimage) {
         for (len = gridstats.length, i = 0; i < len; i++) {
@@ -985,22 +1050,22 @@ function render() {
 
             for (let j = 0, len = gridstats[i].positions.length; j != len; j++) {
                 if (
-                    gridstats[i].positions[j].x - 20 < scrollX * 20 + widthmax * 20 &&
-                    gridstats[i].positions[j].x + 20 > scrollX * 20
+                    gridstats[i].positions[j].x - 1 < scrollX + widthmax &&
+                    gridstats[i].positions[j].x + 1 > scrollX
                 )
                     ctx.fillText(
                         gridstats[i].letter,
-                        gridstats[i].positions[j].x +
-                            10 -
+                        gridstats[i].positions[j].x * zoom +
+                            zoom / 2 -
                             gridstats[i].letter.length * 4 -
-                            scrollX * 20,
-                        gridstats[i].positions[j].y + 10 - scrollY * 20
+                            scrollX * zoom,
+                        gridstats[i].positions[j].y * zoom + zoom / 2 - scrollY * zoom
                     );
                 ctx.rect(
-                    gridstats[i].positions[j].x - scrollX * 20,
-                    gridstats[i].positions[j].y - scrollY * 20,
-                    19,
-                    19
+                    (gridstats[i].positions[j].x - scrollX) * zoom,
+                    (gridstats[i].positions[j].y - scrollY) * zoom,
+                    (zoom * 19) / 20,
+                    (zoom * 19) / 20
                 );
             }
             ctx.stroke();
@@ -1010,8 +1075,8 @@ function render() {
         for (const road in roadgrid) {
             const pos = JSON.parse(road);
 
-            ctx.fillText('R', pos.x - scrollX * 20 + 6, pos.y - scrollY * 20 + 10);
-            ctx.rect(pos.x - scrollX * 20, pos.y - scrollY * 20, 20, 20);
+            ctx.fillText('R', (pos.x - scrollX) * zoom + 6, (pos.y - scrollY) * zoom + zoom / 2);
+            ctx.rect((pos.x - scrollX) * zoom, (pos.y - scrollY) * zoom, zoom, zoom);
         }
     } else {
         for (len = gridstats.length, i = 0; i < len; i++) {
@@ -1019,8 +1084,8 @@ function render() {
 
             for (let j = 0, len = gridstats[i].positions.length; j != len; j++) {
                 if (
-                    gridstats[i].positions[j].x - 20 < scrollX * 20 + widthmax * 20 &&
-                    gridstats[i].positions[j].x + 20 > scrollX * 20
+                    gridstats[i].positions[j].x - 1 < scrollX + widthmax &&
+                    gridstats[i].positions[j].x + 1 > scrollX
                 ) {
                     if (gridstats[i].disabled) {
                         ctx.drawImage(
@@ -1029,10 +1094,10 @@ function render() {
                             gridstats[i].positions[j].img.dy,
                             20,
                             20,
-                            gridstats[i].positions[j].x - scrollX * 20,
-                            gridstats[i].positions[j].y - scrollY * 20,
-                            20,
-                            20
+                            (gridstats[i].positions[j].x - scrollX) * zoom,
+                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            zoom,
+                            zoom
                         );
                         ctx.stroke();
                     } else if (!gridstats[i].inrange) {
@@ -1042,10 +1107,10 @@ function render() {
                             gridstats[i].positions[j].img.dy,
                             20,
                             20,
-                            gridstats[i].positions[j].x - scrollX * 20,
-                            gridstats[i].positions[j].y - scrollY * 20,
-                            20,
-                            20
+                            (gridstats[i].positions[j].x - scrollX) * zoom,
+                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            zoom,
+                            zoom
                         );
                         ctx.stroke();
                     } else {
@@ -1055,10 +1120,10 @@ function render() {
                             gridstats[i].positions[j].img.dy,
                             20,
                             20,
-                            gridstats[i].positions[j].x - scrollX * 20,
-                            gridstats[i].positions[j].y - scrollY * 20,
-                            20,
-                            20
+                            (gridstats[i].positions[j].x - scrollX) * zoom,
+                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            zoom,
+                            zoom
                         );
                         ctx.stroke();
                     }
@@ -1075,10 +1140,10 @@ function render() {
                 roadgrid[road].y,
                 20,
                 20,
-                pos.x - scrollX * 20,
-                pos.y - scrollY * 20,
-                22,
-                22
+                (pos.x - scrollX) * zoom,
+                (pos.y - scrollY) * zoom,
+                (zoom * 22) / 20,
+                (zoom * 22) / 20
             );
         }
     }
@@ -1095,10 +1160,7 @@ function recalcBuildings() {
         building.inrange = false;
         for (const city of p.cities) {
             for (const position of building.positions) {
-                if (
-                    Math.abs(position.x / 20 - city.x) <= 15 &&
-                    Math.abs(position.y / 20 - city.y) <= 15
-                ) {
+                if (Math.abs(position.x - city.x) <= 15 && Math.abs(position.y - city.y) <= 15) {
                     building.inrange = true;
                     outofrange--;
                     break;
@@ -1151,25 +1213,25 @@ function recalcroads(roads) {
         {
             istrue(whichroad) {
                 const pos = JSON.parse(whichroad);
-                return roadgrid[JSON.stringify({ x: pos.x, y: pos.y - 20 })] != undefined;
+                return roadgrid[JSON.stringify({ x: pos.x, y: pos.y - 1 })] != undefined;
             },
         },
         {
             istrue(whichroad) {
                 const pos = JSON.parse(whichroad);
-                return roadgrid[JSON.stringify({ x: pos.x + 20, y: pos.y })] != undefined;
+                return roadgrid[JSON.stringify({ x: pos.x + 1, y: pos.y })] != undefined;
             },
         },
         {
             istrue(whichroad) {
                 const pos = JSON.parse(whichroad);
-                return roadgrid[JSON.stringify({ x: pos.x, y: pos.y + 20 })] != undefined;
+                return roadgrid[JSON.stringify({ x: pos.x, y: pos.y + 1 })] != undefined;
             },
         },
         {
             istrue(whichroad) {
                 const pos = JSON.parse(whichroad);
-                return roadgrid[JSON.stringify({ x: pos.x - 20, y: pos.y })] != undefined;
+                return roadgrid[JSON.stringify({ x: pos.x - 1, y: pos.y })] != undefined;
             },
         },
     ];
@@ -1185,311 +1247,655 @@ function recalcroads(roads) {
         }
     }
 }
-canvas.onmousedown = function (event) {
-    if (ispainting && allowed && position.y - scrollY * 20 < canvas.height) {
-        allowed = false;
-        let isInRange = false;
-        click.play();
-        p.population = 0;
-        p.military = 0;
-        p.resources = 0;
-        p.food = 0;
-        p.xp = 0;
-        p.fish = 0;
-        const oldpop = unemployed;
-        const gridposition = [];
-        if (Math.floor(position.x - screen.width / 2) / 20 - spawnX + 5 > max.right) {
-            max.right = Math.floor(position.x - screen.width / 2) / 20 - spawnX + 5;
-        }
-        if (Math.floor(position.x - screen.width / 2) / 20 - spawnX - 5 < max.left) {
-            max.left = Math.floor(position.x - screen.width / 2) / 20 - spawnX - 5;
-        }
-        if (Math.floor((position.y - screen.height / 2) / 20) - spawnY + 10 > max.down) {
-            max.down = Math.floor(position.y - screen.height / 2) / 20 - spawnY + 10;
-        }
-        if (Math.floor((position.y - screen.height / 2) / 20) - spawnY - 5 < max.up) {
-            max.up = Math.floor(position.y - screen.height / 2) / 20 - spawnY - 5;
-        }
-        for (let i = 0; i != piece.length; i++) {
-            gridposition.push({
-                x: position.x + piece[i].x * 20,
-                y: position.y + piece[i].y * 20,
-                img: p.pieceROM[p_index].piecepositions[i].img,
-            });
-            grid[position.y / 20 + piece[i].y].push(position.x + piece[i].x * 20);
-            if (
-                p.pieceROM[p_index].name == 'Road' ||
-                p.pieceROM[p_index].name == 'Bridge' ||
-                p.pieceROM[p_index].name == 'Bonfire' ||
-                difficulty < 10
-            ) {
-                isInRange = true;
-                if (p.pieceROM[p_index].name == 'Road') {
-                    p.pieceROM[p_index].effect();
-                    buildingamounts[p_index] += 1;
-                    roadgrid[JSON.stringify({ x: position.x, y: position.y })] = { x: 0, y: 0 };
-                    recalcroads([
-                        JSON.stringify({ x: position.x, y: position.y }),
-                        JSON.stringify({ x: position.x + 20, y: position.y }),
-                        JSON.stringify({ x: position.x, y: position.y + 20 }),
-                        JSON.stringify({ x: position.x, y: position.y - 20 }),
-                        JSON.stringify({ x: position.x - 20, y: position.y }),
-                    ]);
-                    displayUI();
-                    render();
-                    allowed = false;
-                    first_turn = false;
-                    if (!p.pieceROM[p_index].requires()) {
-                        piece.length = 0;
-                        ispainting = false;
-                    }
-                    return;
-                }
-            }
-            if (!isInRange) {
-                for (j = 0; j < p.cities.length; j++) {
-                    if (
-                        Math.abs(p.cities[j].x - gridposition[i].x / 20) <= 15 &&
-                        Math.abs(p.cities[j].y - gridposition[i].y / 20) <= 15
-                    ) {
-                        isInRange = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!hillgrid[gridposition[i].y / 20].includes(gridposition[i].x)) {
-                p.entirehill = false;
-            }
-            if (hillgrid[gridposition[i].y / 20].includes(gridposition[i].x)) {
-                p.hill = true;
-            }
-        }
-
-        const oldresources = resources;
-        p.pieceROM[p_index].effect();
-
-        gridstats.push({
-            index: p_index,
-            letter: letter,
-            population: p.population,
-            employmentrequired: oldpop - unemployed,
-            food: p.food,
-            resources: p.resources,
-            military: p.military,
-            xp: p.xp,
-            fish: p.fish,
-            positions: gridposition.slice(0),
-            resourcerefund: oldresources - resources,
-            disabled: false,
-            inrange: isInRange,
-        });
-        xp += Math.ceil((oldresources - resources) * (1 + techstats.innovation) * 2);
-        first_turn = false;
-        if (p_index == 18) {
-            gridstats[gridstats.length - 1].citypos = {
-                x: position.x / 20,
-                y: position.y / 20,
-            };
-        }
-        if (!p.pieceROM[p_index].requires()) {
-            piece.length = 0;
-            ispainting = false;
-        }
-
-        buildingamounts[p_index] += 1;
-        if (!isInRange) {
-            outofrange++;
-        }
-        if (p_index == 18) {
-            recalcBuildings();
-        }
-        displayUI();
-        render();
-        if (tutorialindex == 10 || tutorialindex == 11 || tutorialindex == 12) {
-            displayUI();
-            if (tutorialindex != 12) {
-                continuetutorial(++tutorialindex, 30, 70, false);
-            } else {
-                if (p.pieceROM[0].amountbought >= 2) {
-                    continuetutorial(++tutorialindex);
-                }
-            }
-        }
-    } else if (removing && grid[position.y / 20].includes(position.x)) {
-        let found = false;
-        let buildingindex = 0;
-        if (roadgrid[JSON.stringify({ x: position.x, y: position.y })] != undefined) {
-            grid[position.y / 20].splice(grid[position.y / 20].indexOf(position.x));
-            delete roadgrid[JSON.stringify({ x: position.x, y: position.y })];
-            recalcroads([
-                JSON.stringify({ x: position.x + 20, y: position.y }),
-                JSON.stringify({ x: position.x, y: position.y + 20 }),
-                JSON.stringify({ x: position.x, y: position.y - 20 }),
-                JSON.stringify({ x: position.x - 20, y: position.y }),
-            ]);
-            render();
+document.onmouseup = function () {
+    if (isPlacingArmies) {
+        if (currentDivisions.length == 0) {
             return;
         }
-        for (let i = 0, len = gridstats.length; i < len; i++) {
-            for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
-                if (
-                    gridstats[i].positions[j].x == position.x &&
-                    gridstats[i].positions[j].y == position.y
-                ) {
-                    buildingindex = i;
-                    found = true;
+        isPlacingArmies = false;
+        const convertedMousePos = convertToPlaceCoords(mousePos, false);
+        const convertedStartPos = convertToPlaceCoords(startingPlace, true);
+        convertedMousePos.x /= armyZoom;
+        convertedMousePos.y /= armyZoom;
+        convertedStartPos.x /= armyZoom;
+        convertedStartPos.y /= armyZoom;
+        let divisionCount = 0;
+        let ySign = Math.sign(convertedMousePos.y - convertedStartPos.y);
+        let xSign = Math.sign(convertedMousePos.x - convertedStartPos.x);
+        if (ySign == 0) {
+            ySign = 1;
+        }
+        if (xSign == 0) {
+            xSign = 1;
+        }
+        for (
+            let i = convertedStartPos.y;
+            ySign == 1 ? i <= convertedMousePos.y : i >= convertedMousePos.y;
+            i += 20 * ySign
+        ) {
+            for (
+                let j = convertedStartPos.x;
+                xSign == 1 ? j <= convertedMousePos.x + 20 : j >= convertedMousePos.x - 20;
+                j += 20 * xSign
+            ) {
+                if (divisionCount >= currentDivisions.length) {
                     break;
                 }
+                if (
+                    !playerBorders.has(tilecode((j + armyScrollX) / 20 - 1, (i + armyScrollY) / 20))
+                ) {
+                    continue;
+                }
+                if (placedTiles.has(tilecode(j - 10, i + 10))) {
+                    continue;
+                }
+                const division = currentDivisions[divisionCount];
+                blueArmies.push(
+                    new army(
+                        j - 10 + armyScrollX,
+                        i + 10 + armyScrollY,
+                        division.power,
+                        division.type,
+                        'blue'
+                    )
+                );
+                division.placed = true;
+                placedTiles.add(tilecode(j - 10, i + 10));
+
+                divisionCount++;
             }
-            if (found) break;
         }
-
-        for (const el of gridstats[buildingindex].positions) {
-            const indexx = grid[el.y / 20].indexOf(el.x);
-            grid[el.y / 20].splice(indexx, 1);
-            repairbreakamount += 1;
-            breaksound.play();
+        const placeButton = document.getElementById(currentArmyGroup);
+        placeButton.style.border = '3px solid black';
+        placeButton.childNodes[2].innerHTML =
+            'Divisions: ' + (currentDivisions.length - divisionCount);
+        let currentPower = 0;
+        for (let i = divisionCount; i < currentDivisions.length; i++) {
+            currentPower += currentDivisions[i].power;
         }
-        resources += Math.floor(gridstats[buildingindex].resourcerefund / 2);
-        buildingamounts[gridstats[buildingindex].index] -= 1;
-
-        switch (gridstats[buildingindex].index) {
-            case '11':
-                modifiers.military -= 1;
-                break;
-            case '18':
-                for (let i = 0, len = p.cities.length; i < len; i++) {
+        placeButton.childNodes[1].innerHTML = 'Manpower: ' + shorten(currentPower);
+        isPlacingArmies = false;
+        currentDivisions.length = 0;
+        renderArmies();
+    }
+};
+canvas.onmouseup = function (event) {
+    if (battling) {
+        if (!isPlacing) {
+            if (drawingRectangle) {
+                for (let i = 0; i < blueArmies.length; i++) {
                     if (
-                        p.cities[i].x == gridstats[buildingindex].citypos.x &&
-                        p.cities[i].y == gridstats[buildingindex].citypos.y
+                        blueArmies[i].x >
+                            Math.min(
+                                startingPlace.x / armyZoom + startingScroll.x,
+                                mousePos.x / armyZoom + armyScrollX
+                            ) &&
+                        blueArmies[i].x <
+                            Math.max(
+                                startingPlace.x / armyZoom + startingScroll.x,
+                                mousePos.x / armyZoom + armyScrollX
+                            ) &&
+                        blueArmies[i].y >
+                            Math.min(
+                                startingPlace.y / armyZoom + startingScroll.y,
+                                mousePos.y / armyZoom + armyScrollY
+                            ) &&
+                        blueArmies[i].y <
+                            Math.max(
+                                startingPlace.y / armyZoom + startingScroll.y,
+                                mousePos.y / armyZoom + armyScrollY
+                            )
                     ) {
-                        p.cities.splice(i, 1);
+                        armiesChosen.push(i);
+                        blueArmies[i].selected = true;
+                    }
+                }
+                if (armiesChosen.length > 0) {
+                    drawingRectangle = false;
+                    return;
+                }
+            } else if (armyChosen != null) {
+                for (const a of armiesChosen) {
+                    const armyDirection = Math.atan2(
+                        blueArmies[armyChosen].y - blueArmies[a].y,
+                        blueArmies[armyChosen].x - blueArmies[a].x
+                    );
+                    blueArmies[a].destination.length = 0;
+                    if (blueArmies[a].priority <= 2) {
+                        blueArmies[a].priority = 1;
+                    }
+                    blueArmies[a].destination.push({
+                        x:
+                            armyScrollX +
+                            mousePos.x / armyZoom -
+                            Math.cos(armyDirection + (Math.PI / 12) * rotationAmount) *
+                                blueArmies[a].getDistance(
+                                    blueArmies[armyChosen].x,
+                                    blueArmies[armyChosen].y
+                                ) *
+                                tightnessX,
+
+                        y:
+                            armyScrollY +
+                            mousePos.y / armyZoom -
+                            Math.sin(armyDirection + (Math.PI / 12) * rotationAmount) *
+                                blueArmies[a].getDistance(
+                                    blueArmies[armyChosen].x,
+                                    blueArmies[armyChosen].y
+                                ) *
+                                tightnessY,
+                    });
+                    blueArmies[a].targetRotation =
+                        blueArmies[a].direction + (Math.PI / 12) * rotationAmount;
+                    blueArmies[a].selected = false;
+                }
+                isSelecting = false;
+                armiesChosen.length = 0;
+            }
+            drawingRectangle = false;
+        }
+    }
+};
+function convertToPlaceCoords(pos) {
+    return {
+        x: Math.floor(pos.x / (armyZoom * 20)) * armyZoom * 20,
+        y: Math.floor(pos.y / (armyZoom * 20)) * armyZoom * 20,
+    };
+}
+canvas.onmousedown = function (event) {
+    mousePos = { x: event.clientX, y: event.clientY };
+
+    if (battling) {
+        if (isPlacing) {
+            isPlacingArmies = true;
+            startingScroll = { x: armyScrollX, y: armyScrollY };
+            startingPlace = { x: mousePos.x, y: mousePos.y };
+        } else {
+            if (!isSelecting) {
+                rotationAmount = 0;
+                tightnessX = 1;
+                tightnessY = 1;
+            }
+
+            if (event.button == 0) {
+                for (let i = 0; i < blueArmies.length; i++) {
+                    if (
+                        blueArmies[i].getDistance(
+                            mousePos.x / armyZoom + armyScrollX,
+                            mousePos.y / armyZoom + armyScrollY
+                        ) <
+                        20 / armyZoom
+                    ) {
+                        if (armiesChosen.length == 0) armiesChosen.push(i);
+                        armyChosen = i;
+                        drawingLine = true;
+                        isSelecting = true;
+                        startingPlace = {
+                            x: mousePos.x,
+                            y: mousePos.y,
+                        };
+                        startingScroll = { x: armyScrollX, y: armyScrollY };
                         break;
                     }
                 }
-                recalcBuildings();
-                break;
-            case '19':
-                modifiers.food -= 2;
-                modifiers.resources -= 2;
-                break;
+            } else {
+                armyChosen = null;
+                drawingLine = false;
+                drawingRectangle = true;
+                isSelecting = true;
+                startingPlace = {
+                    x: mousePos.x,
+                    y: mousePos.y,
+                };
+                startingScroll = { x: armyScrollX, y: armyScrollY };
+            }
         }
-        gridstats.splice(buildingindex, 1);
-
-        render();
-        displayUI();
-    } else if (repairing && grid[position.y / 20].includes(position.x)) {
-        let found = false;
-        let buildingindex = 0;
-        for (let i = 0, len = gridstats.length; i < len; i++) {
-            for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
+    } else {
+        if (ispainting && allowed && position.y - scrollY * zoom < canvas.height && zoom >= 15) {
+            allowed = false;
+            let isInRange = false;
+            click.play();
+            p.population = 0;
+            p.military = 0;
+            p.resources = 0;
+            p.food = 0;
+            p.xp = 0;
+            p.fish = 0;
+            const oldpop = unemployed;
+            const gridposition = [];
+            if (Math.floor(position.x - screen.width / 2) - spawnX + 5 > max.right) {
+                max.right = Math.floor(position.x - screen.width / 2) - spawnX + 5;
+            }
+            if (Math.floor(position.x - screen.width / 2) - spawnX - 5 < max.left) {
+                max.left = Math.floor(position.x - screen.width / 2) - spawnX - 5;
+            }
+            if (Math.floor(position.y - screen.height / 2) - spawnY + 10 > max.down) {
+                max.down = Math.floor(position.y - screen.height / 2) - spawnY + 10;
+            }
+            if (Math.floor(position.y - screen.height / 2) - spawnY - 5 < max.up) {
+                max.up = Math.floor(position.y - screen.height / 2) - spawnY - 5;
+            }
+            for (let i = 0; i != piece.length; i++) {
+                gridposition.push({
+                    x: position.x + piece[i].x,
+                    y: position.y + piece[i].y,
+                    img: p.pieceROM[p_index].piecepositions[i].img,
+                });
+                grid[position.y + piece[i].y].push(position.x + piece[i].x);
                 if (
-                    gridstats[i].positions[j].x == position.x &&
-                    gridstats[i].positions[j].y == position.y
+                    p.pieceROM[p_index].name == 'Road' ||
+                    p.pieceROM[p_index].name == 'Bridge' ||
+                    p.pieceROM[p_index].name == 'Bonfire' ||
+                    difficulty < 10
                 ) {
-                    buildingindex = i;
-                    found = true;
-                    break;
+                    isInRange = true;
+                    if (p.pieceROM[p_index].name == 'Road') {
+                        p.pieceROM[p_index].effect();
+                        buildingamounts[p_index] += 1;
+                        roadgrid[JSON.stringify({ x: position.x, y: position.y })] = { x: 0, y: 0 };
+                        recalcroads([
+                            JSON.stringify({ x: position.x, y: position.y }),
+                            JSON.stringify({ x: position.x + 1, y: position.y }),
+                            JSON.stringify({ x: position.x, y: position.y + 1 }),
+                            JSON.stringify({ x: position.x, y: position.y - 1 }),
+                            JSON.stringify({ x: position.x - 1, y: position.y }),
+                        ]);
+                        displayUI();
+                        render();
+                        allowed = false;
+                        first_turn = false;
+                        if (!p.pieceROM[p_index].requires()) {
+                            piece.length = 0;
+                            ispainting = false;
+                        }
+                        return;
+                    }
+                }
+                if (!isInRange) {
+                    for (j = 0; j < p.cities.length; j++) {
+                        if (
+                            Math.abs(p.cities[j].x - gridposition[i].x) <= 15 &&
+                            Math.abs(p.cities[j].y - gridposition[i].y) <= 15
+                        ) {
+                            isInRange = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!exists('hill', gridposition[i].y, gridposition[i].x)) {
+                    p.entirehill = false;
+                }
+                if (exists('hill', gridposition[i].y, gridposition[i].x)) {
+                    p.hill = true;
                 }
             }
-            if (found) break;
-        }
-        if (
-            gridstats[buildingindex].disabled == true &&
-            resources >= Math.round(gridstats[buildingindex].resourcerefund / 2) &&
-            unemployed >= gridstats[buildingindex].employmentrequired
-        ) {
-            repairbreakamount += 1;
-            repairsound.play();
-            resources -= Math.round(gridstats[buildingindex].resourcerefund / 2);
-            gridstats[buildingindex].disabled = false;
+
+            const oldresources = resources;
+            p.pieceROM[p_index].effect();
+
+            gridstats.push({
+                index: p_index,
+                letter: letter,
+                population: p.population,
+                employmentrequired: oldpop - unemployed,
+                food: p.food,
+                resources: p.resources,
+                military: p.military,
+                xp: p.xp,
+                fish: p.fish,
+                positions: gridposition.slice(0),
+                resourcerefund: oldresources - resources,
+                disabled: false,
+                inrange: isInRange,
+            });
+            xp += Math.ceil((oldresources - resources) * (1 + techstats.innovation) * 2);
+            first_turn = false;
+            if (p_index == 18) {
+                gridstats[gridstats.length - 1].citypos = {
+                    x: position.x,
+                    y: position.y,
+                };
+            }
+            if (!p.pieceROM[p_index].requires()) {
+                piece.length = 0;
+                ispainting = false;
+            }
+
+            buildingamounts[p_index] += 1;
+            if (!isInRange) {
+                outofrange++;
+            }
+            if (p_index == 18) {
+                recalcBuildings();
+            }
+            displayUI();
+            render();
+            if (tutorialindex == 10 || tutorialindex == 11 || tutorialindex == 12) {
+                displayUI();
+                if (tutorialindex != 12) {
+                    continuetutorial(++tutorialindex, 30, 70, false);
+                } else {
+                    if (p.pieceROM[0].amountbought >= 2) {
+                        continuetutorial(++tutorialindex);
+                    }
+                }
+            }
+        } else if (removing && grid[position.y].includes(position.x)) {
+            let found = false;
+            let buildingindex = 0;
+            if (roadgrid[JSON.stringify({ x: position.x, y: position.y })] != undefined) {
+                grid[position.y].splice(grid[position.y].indexOf(position.x));
+                delete roadgrid[JSON.stringify({ x: position.x, y: position.y })];
+                recalcroads([
+                    JSON.stringify({ x: position.x + 1, y: position.y }),
+                    JSON.stringify({ x: position.x, y: position.y + 1 }),
+                    JSON.stringify({ x: position.x, y: position.y - 1 }),
+                    JSON.stringify({ x: position.x - 1, y: position.y }),
+                ]);
+                render();
+                return;
+            }
+            for (let i = 0, len = gridstats.length; i < len; i++) {
+                for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
+                    if (
+                        gridstats[i].positions[j].x == position.x &&
+                        gridstats[i].positions[j].y == position.y
+                    ) {
+                        buildingindex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+
+            for (const el of gridstats[buildingindex].positions) {
+                const indexx = grid[el.y].indexOf(el.x);
+                grid[el.y].splice(indexx, 1);
+                repairbreakamount += 1;
+                breaksound.play();
+            }
+            resources += Math.floor(gridstats[buildingindex].resourcerefund / 2);
+            buildingamounts[gridstats[buildingindex].index] -= 1;
+
             switch (gridstats[buildingindex].index) {
-                case '11':
-                    modifiers.military += 1;
-                    break;
                 case '18':
-                    p.cities.push(gridstats[buildingindex].citypos);
+                    for (let i = 0, len = p.cities.length; i < len; i++) {
+                        if (
+                            p.cities[i].x == gridstats[buildingindex].citypos.x &&
+                            p.cities[i].y == gridstats[buildingindex].citypos.y
+                        ) {
+                            p.cities.splice(i, 1);
+                            break;
+                        }
+                    }
                     recalcBuildings();
                     break;
                 case '19':
-                    modifiers.food += 2;
-                    modifiers.resources += 2;
+                    modifiers.food -= 2;
+                    modifiers.resources -= 2;
                     break;
             }
+            gridstats.splice(buildingindex, 1);
+
             render();
             displayUI();
+        } else if (repairing && grid[position.y].includes(position.x)) {
+            let found = false;
+            let buildingindex = 0;
+            for (let i = 0, len = gridstats.length; i < len; i++) {
+                for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
+                    if (
+                        gridstats[i].positions[j].x == position.x &&
+                        gridstats[i].positions[j].y == position.y
+                    ) {
+                        buildingindex = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+            if (
+                gridstats[buildingindex].disabled == true &&
+                resources >= Math.round(gridstats[buildingindex].resourcerefund / 2) &&
+                unemployed >= gridstats[buildingindex].employmentrequired
+            ) {
+                repairbreakamount += 1;
+                repairsound.play();
+                resources -= Math.round(gridstats[buildingindex].resourcerefund / 2);
+                gridstats[buildingindex].disabled = false;
+                switch (gridstats[buildingindex].index) {
+                    case '18':
+                        p.cities.push(gridstats[buildingindex].citypos);
+                        recalcBuildings();
+                        break;
+                    case '19':
+                        modifiers.food += 2;
+                        modifiers.resources += 2;
+                        break;
+                }
+                render();
+                displayUI();
+            }
         }
     }
 };
 
 document.onkeydown = function (event) {
-    if (event.key == 'Escape') {
-        if (canvas.style.display == 'block') {
-            pause_menu();
-        }
-    }
-    if (
-        techstats.exploration &&
-        document.getElementById('popup_block_buttons').style.display != 'block' &&
-        canvas.style.display == 'block'
-    ) {
-        if (psettings.arrowkeys) {
-            switch (event.key) {
-                case 'ArrowUp':
-                    if (scrollY > 0 && scrollY - spawnY > max.up) {
-                        move(0, -1);
-                    }
-                    break;
-                case 'ArrowDown':
-                    if (scrollY < 499 - heightmax && scrollY - spawnY < max.down) {
-                        move(0, 1);
-                    }
-                    break;
-                case 'ArrowLeft':
-                    if (scrollX > 0 && scrollX - spawnX > max.left) {
-                        move(-1, 0);
-                    }
-                    break;
-                case 'ArrowRight':
-                    if (scrollX < 499 && scrollX - spawnX < max.right) {
-                        move(1, 0);
-                    }
-                    break;
+    if (battling) {
+        switch (event.key) {
+            case 'w':
+                armyScrollY -= 20;
+                renderArmyUI();
+                break;
+            case 's':
+                armyScrollY += 20;
+                renderArmyUI();
+                break;
+            case 'a':
+                armyScrollX -= 20;
+                renderArmyUI();
+                break;
+            case 'd':
+                armyScrollX += 20;
+                renderArmyUI();
+                break;
+            case 'q':
+                rotationAmount--;
+                renderArmyUI();
+                break;
+            case 'e':
+                rotationAmount++;
+                renderArmyUI();
+                break;
+            case 'z':
+                tightnessY += 0.1;
+                renderArmyUI();
+                break;
+            case 'c':
+                tightnessY -= 0.1;
+                renderArmyUI();
+                break;
+            case 'Z':
+                tightnessX += 0.1;
+                renderArmyUI();
+                break;
+            case 'C':
+                tightnessX -= 0.1;
+                renderArmyUI();
+                break;
+            case '-':
+                armyZoom -= 0.1;
+                armyZoom = Math.max(0.25, armyZoom);
+                changeZoom(armyZoom * 20);
 
-                //case "r":
-                //rotate()
-                //break
+                break;
+            case '=':
+                armyZoom += 0.1;
+                armyZoom = Math.min(10, armyZoom);
+
+                changeZoom(armyZoom * 20);
+                break;
+        }
+    } else {
+        if (event.key == 'Escape') {
+            if (canvas.style.display == 'block') {
+                pause_menu();
             }
-        } else {
-            switch (event.key) {
-                case 'w':
-                    if (scrollY > 0 && scrollY - spawnY > max.up) {
-                        move(0, -1);
+        }
+        if (
+            techstats.exploration &&
+            document.getElementById('popup_block_buttons').style.display != 'block' &&
+            canvas.style.display == 'block'
+        ) {
+            if (event.key == '-' && zoom > 1) {
+                zoom -= 1;
+                heightmax = Math.round((screen.height * 0.88) / zoom);
+                widthmax = Math.round(screen.width / zoom);
+                for (
+                    let i = Math.floor(scrollY / 50);
+                    i < Math.ceil((scrollY + heightmax) / 50);
+                    i++
+                ) {
+                    for (
+                        let j = Math.floor(scrollX / 50);
+                        j < Math.ceil((scrollX + widthmax) / 50);
+                        j++
+                    ) {
+                        if (!loadedchunks.includes(tilecode(j, i))) {
+                            rerenderchunks(j * 50, i * 50);
+                        }
                     }
-                    break;
-                case 's':
-                    if (scrollY < 499 - heightmax && scrollY - spawnY < max.down) {
-                        move(0, 1);
+                }
+
+                render();
+                return;
+            } else if (event.key == '=' && zoom < 50) {
+                zoom += 1;
+                heightmax = Math.round((screen.height * 0.88) / zoom);
+                widthmax = Math.round(screen.width / zoom);
+                for (
+                    let i = Math.floor(scrollY / 50);
+                    i < Math.ceil((scrollY + heightmax) / 50);
+                    i++
+                ) {
+                    for (
+                        let j = Math.floor(scrollX / 50);
+                        j < Math.ceil((scrollX + widthmax) / 50);
+                        j++
+                    ) {
+                        if (!loadedchunks.includes(tilecode(j, i))) {
+                            rerenderchunks(j * 50, i * 50);
+                        }
                     }
-                    break;
-                case 'a':
-                    if (scrollX > 0 && scrollX - spawnX > max.left) {
-                        move(-1, 0);
+                }
+                render();
+                return;
+            }
+            if (event.key == '-' && zoom > 1) {
+                zoom -= 1;
+                heightmax = Math.round((screen.height * 0.88) / zoom);
+                widthmax = Math.round(screen.width / zoom);
+                for (
+                    let i = Math.floor(scrollY / 50);
+                    i < Math.ceil((scrollY + heightmax) / 50);
+                    i++
+                ) {
+                    for (
+                        let j = Math.floor(scrollX / 50);
+                        j < Math.ceil((scrollX + widthmax) / 50);
+                        j++
+                    ) {
+                        if (!loadedchunks.includes(tilecode(j, i))) {
+                            rerenderchunks(j * 50, i * 50);
+                        }
                     }
-                    break;
-                case 'd':
-                    if (scrollX < 499 && scrollX - spawnX < max.right) {
-                        move(1, 0);
+                }
+
+                render();
+                return;
+            } else if (event.key == '=' && zoom < 50) {
+                zoom += 1;
+                heightmax = Math.round((screen.height * 0.88) / zoom);
+                widthmax = Math.round(screen.width / zoom);
+                for (
+                    let i = Math.floor(scrollY / 50);
+                    i < Math.ceil((scrollY + heightmax) / 50);
+                    i++
+                ) {
+                    for (
+                        let j = Math.floor(scrollX / 50);
+                        j < Math.ceil((scrollX + widthmax) / 50);
+                        j++
+                    ) {
+                        if (!loadedchunks.includes(tilecode(j, i))) {
+                            rerenderchunks(j * 50, i * 50);
+                        }
                     }
-                    break;
-                //case "r":
-                //rotate()
-                //break
+                }
+                render();
+                return;
+            }
+            if (psettings.arrowkeys) {
+                switch (event.key) {
+                    case 'ArrowUp':
+                        if (scrollY > 0 && scrollY - spawnY > max.up) {
+                            move(0, -1);
+                        }
+                        break;
+                    case 'ArrowDown':
+                        if (scrollY < 499 - heightmax && scrollY - spawnY < max.down) {
+                            move(0, 1);
+                        }
+                        break;
+                    case 'ArrowLeft':
+                        if (scrollX > 0 && scrollX - spawnX > max.left) {
+                            move(-1, 0);
+                        }
+                        break;
+                    case 'ArrowRight':
+                        if (scrollX < 499 && scrollX - spawnX < max.right) {
+                            move(1, 0);
+                        }
+                        break;
+
+                    //case "r":
+                    //rotate()
+                    //break
+                }
+            } else {
+                switch (event.key) {
+                    case 'w':
+                        if (scrollY > 0 && scrollY - spawnY > max.up) {
+                            move(0, -1);
+                        }
+                        break;
+                    case 's':
+                        if (scrollY < 499 - heightmax && scrollY - spawnY < max.down) {
+                            move(0, 1);
+                        }
+                        break;
+                    case 'a':
+                        if (scrollX > 0 && scrollX - spawnX > max.left) {
+                            move(-1, 0);
+                        }
+                        break;
+                    case 'd':
+                        if (scrollX < 499 && scrollX - spawnX < max.right) {
+                            move(1, 0);
+                        }
+                        break;
+                    //case "r":
+                    //rotate()
+                    //break
+                }
             }
         }
     }
 };
+
 function rotate() {
     difference += 0.5;
     let x = [];
