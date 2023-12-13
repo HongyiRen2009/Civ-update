@@ -6,6 +6,13 @@ const dev = {
         max.down = 100000000;
         techstats.exploration = true;
     },
+    warpToKingdom() {
+        dev.removemax();
+        const pos = tiledecode(Array.from(kingdoms[0].borders)[0]);
+        scrollX = pos.x;
+        scrollY = pos.y;
+        render();
+    },
     checkDevModeEnabled: function () {
         if (!devmode) {
             throw new Error('Devmode is not enabled. Go to index.html to enable. ');
@@ -63,7 +70,7 @@ const dev = {
             food: 99999999999,
             index: '0',
             letter: 'CHEAT',
-            military: 0,
+            military: 999999999,
             population: 99999999999,
             positions: [],
             resourcerefund: 0,
