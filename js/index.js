@@ -1,3 +1,4 @@
+
 let rainthroughnum = 500;
 let speedRainTrough = 25;
 let RainTrough = [];

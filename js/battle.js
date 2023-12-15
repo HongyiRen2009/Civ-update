@@ -3,7 +3,8 @@ function battlescreen(battleType, armyPower) {
     armyScrollX = scrollX * 20;
     armyScrollY = scrollY * 20;
     battling = true;
-
+    blueArmies.length=0
+    redArmies.length=0
     document.getElementById('bgimg').style.display = 'none';
     document.getElementById('popup_block_buttons').style.display = 'none';
     document.getElementById('pause_flex').style.display = 'none';
@@ -161,6 +162,7 @@ function renderArmyUI() {
                 xSign == 1 ? j <= convertedMousePos.x + 20 : j >= convertedMousePos.x - 20;
                 j += 20 * xSign
             ) {
+                debugger
                 if (divisionCount >= currentDivisions.length) {
                     return;
                 }
@@ -461,6 +463,11 @@ function mainFunction() {
             isSelecting = true;
             information[1].choosetext(blueTotalPower - bluePower);
             displaypopup(1, information);
+        }
+        if (blueArmies.length == 0) {
+            isSelecting = true;
+            information[0].choosetext(blueTotalPower - bluePower);
+            displaypopup(0, information);
         }
         for (const a of redArmies) {
             if (isLand(Math.floor(a.x / 20), Math.floor(a.y / 20))) {

@@ -132,6 +132,7 @@ const popups = [
             ) {
                 choicesdisabled.push(1);
             }
+            
             this.power = Math.floor(
                 difficultymultiplier *
                     ((getRandomInt(m.spy, 3) ? 1 : 0.5) *
@@ -1593,17 +1594,23 @@ const information = [
         title: "<strong class = 'color-r'>Failure</strong>",
         size: '30px',
         description: 'The enemy defeated you',
-        choosetext(poplost, reslost) {
+        choosetext(poplost) {
             this.description = `The enemy defeated you<br>Casualties: <strong class = 'color-r'>${shorten(
                 poplost
-            )}</strong><br>Resources spent: <strong class = 'color-r'>${shorten(reslost)}</strong>`;
+            )}</strong>`;
+            this.choices[0].casualties=poplost
         },
         choices: [
             {
+                casualties:0,
                 text: 'close',
                 effect() {
+                    currentpop-=this.casualties
                     document.getElementById('popup_block_buttons').style.display = 'none';
                     document.getElementById('popup').style.display = 'none';
+                    removebuildings(getRandomInt(3,5))
+                    start()
+                    displayUI()
                 },
             },
         ],
