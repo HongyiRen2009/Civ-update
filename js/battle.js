@@ -1,10 +1,80 @@
+//pathfinding
+class node {
+    constructor(start, end, x, y, parent) {
+        this.x = x;
+        this.y = y;
+        this.ds = Math.floor(distance(x, y, start.x, start.y) * 10);
+        this.de = Math.floor(distance(x, y, end.x, end.y) * 10);
+        this.parent = parent;
+    }
+}
+// define the A* algorithm
+function aStar(start, end) {
+    const openNodes = [];
+    const alreadyExists = [];
+    const costs = [];
+    const closedNodes = [];
+
+    const newnode = new node(start, end, start.x, start.y, null);
+    openNodes.push(newnode);
+    costs.push(newnode.ds + newnode.de);
+    alreadyExists.push(tilecode(newnode.x, newnode.y));
+
+    while (openNodes.length > 0) {
+        const current = openNodes[costs.indexOf(Math.min(...costs))];
+        closedNodes.push(current);
+        openNodes.splice(costs.indexOf(Math.min(...costs)), 1);
+        costs.splice(costs.indexOf(Math.min(...costs)), 1);
+
+        if (
+            (end.x == current.x && end.y == current.y) ||
+            closedNodes.length > 1000 ||
+            (closedNodes.length > 100 && distance(start.x, start.y, end.x, end.y) > 50)
+        ) {
+            const path = [];
+            let currentnode = current;
+            while (currentnode.parent != null) {
+                path.push({ x: currentnode.x, y: currentnode.y });
+                currentnode = currentnode.parent;
+            }
+            return path.reverse();
+        }
+
+        for (let i = -1; i < 2; i++) {
+            for (let j = -1; j < 2; j++) {
+                if (
+                    current.x + j < 0 ||
+                    current.x + j > 499 ||
+                    current.y + i < 0 ||
+                    current.y + i > 499
+                ) {
+                    continue;
+                }
+                if (
+                    tilestats[tilecode(current.x + j, current.y + i)] == undefined ||
+                    alreadyExists.includes(tilecode(current.x + j, current.y + i)) ||
+                    exists('lake', current.x + j, current.y + i)
+                ) {
+                    continue;
+                }
+
+                const newnode = new node(start, end, current.x + j, current.y + i, current);
+                openNodes.push(newnode);
+                costs.push(newnode.ds + newnode.de);
+                alreadyExists.push(tilecode(newnode.x, newnode.y));
+            }
+        }
+    }
+    return [];
+}
+
 function battlescreen(battleType, armyPower) {
     placedTiles.clear();
     armyScrollX = scrollX * 20;
     armyScrollY = scrollY * 20;
     battling = true;
-    blueArmies.length=0
-    redArmies.length=0
+    blueArmies.length = 0;
+    redArmies.length = 0;
     document.getElementById('bgimg').style.display = 'none';
     document.getElementById('popup_block_buttons').style.display = 'none';
     document.getElementById('pause_flex').style.display = 'none';
@@ -85,7 +155,9 @@ function battlescreen(battleType, armyPower) {
                                 (randomSpawn.y + i) * 20,
                                 0,
                                 'I',
-                                'red'
+                                'red',
+                                'raid',
+                                getRandomItem(playerBorders)
                             )
                         );
                     }
@@ -162,7 +234,6 @@ function renderArmyUI() {
                 xSign == 1 ? j <= convertedMousePos.x + 20 : j >= convertedMousePos.x - 20;
                 j += 20 * xSign
             ) {
-                debugger
                 if (divisionCount >= currentDivisions.length) {
                     return;
                 }
@@ -461,12 +532,12 @@ function mainFunction() {
         }
         if (redArmies.length == 0) {
             isSelecting = true;
-            information[1].choosetext(blueTotalPower - bluePower);
+            information[1].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
             displaypopup(1, information);
         }
-        if (blueArmies.length == 0) {
+        if (blueArmies.length == 0 || raidProgress >= 20000) {
             isSelecting = true;
-            information[0].choosetext(blueTotalPower - bluePower);
+            information[0].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
             displaypopup(0, information);
         }
         for (const a of redArmies) {
@@ -476,9 +547,9 @@ function mainFunction() {
                 a.waterTimer++;
                 a.power -= a.power / 2000;
             }
+
             if (a.type != 'C' || a.calveryStun == 0) {
                 if (a.animationTime == -6) {
-                    a.destination.length = 0;
                     let min = Infinity;
                     let leastCoord;
                     for (const a2 of blueArmies) {
@@ -495,22 +566,75 @@ function mainFunction() {
                             }
                         }
                     }
-                    if (a.type == 'I' || a.type == 'C' || min > 500) {
-                        a.destination.push(leastCoord);
-                    } else if (a.arrowCoolDown <= 0) {
-                        arrows.push(
-                            new arrow(
-                                a.x,
-                                a.y,
-                                Math.atan2(leastCoord.y - a.y, leastCoord.x - a.x),
-                                Math.ceil(a.power / 10) + (a.power % 10),
-                                leastCoord,
-                                'red'
-                            )
-                        );
-                        a.arrowCoolDown = 15 + Math.random() * 5;
-                    } else {
-                        a.arrowCoolDown--;
+                    switch (a.battleType) {
+                        case 'raid':
+                            if (a.type == 'I' || a.type == 'C') {
+                                if (min < 100) {
+                                    a.isRaiding = false;
+                                    a.destination.length = 0;
+                                    a.destination.push(leastCoord);
+                                } else if (a.destination.length == 0) {
+                                    if (
+                                        playerBorders.has(
+                                            tilecode(Math.floor(a.x / 20), Math.floor(a.y / 20))
+                                        )
+                                    ) {
+                                        raidProgress++;
+                                    }
+
+                                    a.destination.push(
+                                        ...aStar(
+                                            { x: Math.floor(a.x / 20), y: Math.floor(a.y / 20) },
+                                            { x: a.targetCoord.x / 20, y: a.targetCoord.y / 20 }
+                                        ).map(function ({ x: num, y: num2 }) {
+                                            return { x: num * 20, y: num2 * 20 };
+                                        })
+                                    );
+                                }
+                            } else if (a.type == 'A') {
+                                if (min > 500) {
+                                    if (a.arrowCoolDown <= 0) {
+                                        arrows.push(
+                                            new arrow(
+                                                a.x,
+                                                a.y,
+                                                Math.atan2(leastCoord.y - a.y, leastCoord.x - a.x),
+                                                Math.ceil(a.power / 10) + (a.power % 10),
+                                                leastCoord,
+                                                'red'
+                                            )
+                                        );
+                                        a.arrowCoolDown = 15 + Math.random() * 5;
+                                    } else {
+                                        a.arrowCoolDown--;
+                                    }
+                                } else {
+                                    if (min < 100) {
+                                        a.isRaiding = false;
+                                        a.destination.length = 0;
+                                        a.destination.push(leastCoord);
+                                    } else if (a.destination.length == 0) {
+                                        if (
+                                            playerBorders.has(
+                                                tilecode(Math.floor(a.x / 20), Math.floor(a.y / 20))
+                                            )
+                                        ) {
+                                            raidProgress++;
+                                        }
+                                        a.destination.push(
+                                            ...aStar(
+                                                {
+                                                    x: Math.floor(a.x / 20),
+                                                    y: Math.floor(a.y / 20),
+                                                },
+                                                { x: a.targetCoord.x / 20, y: a.targetCoord.y / 20 }
+                                            ).map(function ({ x: num, y: num2 }) {
+                                                return { x: num * 20, y: num2 * 20 };
+                                            })
+                                        );
+                                    }
+                                }
+                            }
                     }
 
                     if (a.destination.length > 0) {
@@ -518,7 +642,10 @@ function mainFunction() {
                             a.destination[0].y - a.y,
                             a.destination[0].x - a.x
                         );
-                        if (a.getDistance(a.destination[0].x, a.destination[0].y) > 30) {
+                        if (a.getDistance(a.destination[0].x, a.destination[0].y) <= 30) {
+                            a.destination.splice(0, 1);
+                        }
+                        if (a.destination.length > 0) {
                             a.x +=
                                 Math.cos(a.direction) *
                                 (min > 180 ? 5 : a.speed) *
@@ -527,8 +654,6 @@ function mainFunction() {
                                 Math.sin(a.direction) *
                                 (min > 180 ? 5 : a.speed) *
                                 (a.waterTimer != 0 ? 0.2 : 1);
-                        } else {
-                            a.destination.splice(0, 1);
                         }
                     }
                 } else {
@@ -786,6 +911,15 @@ function renderArmies() {
                 ctx.stroke();
                 ctx.fill();
                 break;
+        }
+        ctx.fillStyle = 'black';
+        for (const pos of redArmies[i].destination) {
+            ctx.fillRect(
+                (pos.x - armyScrollX) * armyZoom,
+                (pos.y - armyScrollY) * armyZoom,
+                10 * armyZoom,
+                10 * armyZoom
+            );
         }
     }
 

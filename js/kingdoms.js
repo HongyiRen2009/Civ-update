@@ -16,7 +16,7 @@ function divisionsScreen() {
         start();
     };
     document.getElementById('addDivisionButton').disabled =
-        unemployed == 0 || military >= maxPersonnel;
+        Math.min(maxPersonnel - military, unemployed) < military / Math.max(1, divisions.length);
     document.getElementById('availMen').innerHTML = 'Available Manpower: ' + shorten(unemployed);
     document.getElementById('divisionsMilitary').innerHTML =
         'Military: ' + shorten(military) + '/' + shorten(maxPersonnel);
@@ -29,6 +29,13 @@ function divisionsScreen() {
     for (let i = 0; i < divisions.length; i++) {
         displayDivision(divisions[i], i);
     }
+    const dSliders = document.getElementsByClassName('divisionSlider');
+
+    for (const el of dSliders) {
+        el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
+            ((el.value - el.min) / (el.max - el.min)) * 100
+        }%, gray ${((el.value - el.min) / (el.max - el.min)) * 100}%, gray 100%)`;
+    }
 }
 function hasBorder(pos) {
     for (const k of kingdoms) {
@@ -40,12 +47,23 @@ function hasBorder(pos) {
 }
 function addDivision(type) {
     const addFlex = document.getElementById('addDivisionsFlex');
-    const newDivision = new division(type, 1);
+    const newDivision = new division(type, military / Math.max(divisions.length, 1));
+
     divisions.push(newDivision);
     displayDivision(newDivision, divisions.length - 1);
+    dSliders = document.getElementsByClassName('divisionSlider');
+
+    for (const el of dSliders) {
+        el.value = military / Math.max(divisions.length, 1);
+        el.max = Math.floor(Math.min(maxPersonnel - military, unemployed) / divisions.length);
+
+        el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
+            ((el.value - el.min) / (el.max - el.min)) * 100
+        }%, gray ${((el.value - el.min) / (el.max - el.min)) * 100}%, gray 100%)`;
+    }
     addFlex.scrollLeft = addFlex.scrollWidth;
     document.getElementById('addDivisionButton').disabled =
-        unemployed == 0 || military >= maxPersonnel;
+        Math.min(maxPersonnel - military, unemployed) < military / Math.max(1, divisions.length);
 }
 function displayDivision(division, index) {
     const divisionContainer = document.createElement('div');
@@ -59,19 +77,32 @@ function displayDivision(division, index) {
     const divisionXpText = document.createElement('p');
     const divisionGroupLabel = document.createElement('LABEL');
     const divisionSlider = document.createElement('input');
+    divisionPower.className = 'dPower';
     divisionSlider.type = 'range';
     divisionSlider.id = index;
     divisionSlider.className = 'divisionSlider';
-    divisionSlider.max = Math.min(maxPersonnel, unemployed);
+    divisionSlider.max = Math.floor(Math.min(maxPersonnel, unemployed) / divisions.length);
     divisionSlider.min = 0;
-    divisionSlider.value = 1;
+    divisionSlider.value = division.power;
 
     divisionSlider.oninput = function () {
-        divisions[parseInt(divisionSlider.id)].power = parseInt(divisionSlider.value);
-        divisionPower.innerHTML = 'Manpower: ' + shorten(divisionSlider.value);
+        for (const d of divisions) {
+            d.power = parseInt(divisionSlider.value);
+        }
+        dPowers = document.getElementsByClassName('dPower');
+        for (const el of dPowers) {
+            el.innerHTML = 'Manpower: ' + shorten(divisionSlider.value);
+        }
+        dSliders = document.getElementsByClassName('divisionSlider');
+
+        for (const el of dSliders) {
+            el.value = divisionSlider.value;
+        }
+
         displayUI();
         document.getElementById('addDivisionButton').disabled =
-            unemployed == 0 || military >= maxPersonnel;
+            Math.min(maxPersonnel - military, unemployed) <
+            military / Math.max(1, divisions.length);
 
         for (let i = 0; i < document.getElementsByClassName('warning-box').length; i++) {
             document.getElementsByClassName('warning-box')[i].style.display = 'none';
@@ -82,7 +113,7 @@ function displayDivision(division, index) {
             'Military: ' + shorten(military) + '/' + shorten(maxPersonnel);
         const ele = document.getElementsByClassName('divisionSlider');
         for (const el of ele) {
-            el.max = parseInt(el.value) + Math.min(maxPersonnel - military, unemployed);
+            el.max = Math.floor(Math.min(maxPersonnel, unemployed) / divisions.length);
             el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
                 ((el.value - el.min) / (el.max - el.min)) * 100
             }%, gray ${((el.value - el.min) / (el.max - el.min)) * 100}%, gray 100%)`;
@@ -165,14 +196,7 @@ function displayDivision(division, index) {
     for (let i = 0; i < document.getElementsByClassName('warning-box').length; i++) {
         document.getElementsByClassName('warning-box')[i].style.display = 'none';
     }
-    const ele = document.getElementsByClassName('divisionSlider');
 
-    for (const el of ele) {
-        el.max = parseInt(el.value) + Math.min(maxPersonnel - military, unemployed);
-        el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
-            ((el.value - el.min) / (el.max - el.min)) * 100
-        }%, gray ${((el.value - el.min) / (el.max - el.min)) * 100}%, gray 100%)`;
-    }
     document.getElementById('availMen').innerHTML = 'Available Manpower: ' + shorten(unemployed);
     document.getElementById('divisionsMilitary').innerHTML =
         'Military: ' + shorten(military) + '/' + shorten(maxPersonnel);
