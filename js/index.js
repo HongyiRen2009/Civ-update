@@ -1,4 +1,3 @@
-
 let rainthroughnum = 500;
 let speedRainTrough = 25;
 let RainTrough = [];
@@ -1205,6 +1204,10 @@ function getRandomInt(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.round(Math.random() * (max - min)) + min;
+}
+function getRandomItem(set) {
+    let items = Array.from(set);
+    return items[Math.floor(Math.random() * items.length)];
 }
 function cropDecimal(num, fixed) {
     var re = new RegExp('^-?\\d+(?:.\\d{0,' + (fixed || -1) + '})?');

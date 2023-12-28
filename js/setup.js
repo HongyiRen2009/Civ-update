@@ -211,7 +211,7 @@ class kingdom {
     }
 }
 class army {
-    constructor(x, y, power, type, side) {
+    constructor(x, y, power, type, side, bType = 'none', targetCoord = '0/0') {
         this.power = power;
         this.x = x;
         this.y = y;
@@ -225,6 +225,12 @@ class army {
         this.type = type;
         this.targetRotation = 0;
         this.side = side;
+        this.battleType = bType;
+        this.status = 'default';
+        this.targetCoord = tiledecode(targetCoord);
+        this.isRaiding = true;
+        this.targetCoord.x *= 20;
+        this.targetCoord.y *= 20;
         this.priority = 3;
         this.calveryStun = 0;
         this.waterTimer = 0;
@@ -281,7 +287,7 @@ let armyZoom = 1;
 let drawingRectangle = false;
 const gridArmies = {};
 ctx.imageSmoothingEnabled = false;
-
+let raidProgress = 0;
 let isSelecting = false;
 let redTotalPower = 0;
 let blueTotalPower = 0;

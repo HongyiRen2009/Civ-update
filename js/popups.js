@@ -132,7 +132,7 @@ const popups = [
             ) {
                 choicesdisabled.push(1);
             }
-            
+
             this.power = Math.floor(
                 difficultymultiplier *
                     ((getRandomInt(m.spy, 3) ? 1 : 0.5) *
@@ -148,7 +148,8 @@ const popups = [
                 text: 'fight',
                 effect() {
                     document.getElementById('popup').style.display = 'none';
-                    battlescreen('raid',
+                    battlescreen(
+                        'raid',
                         Math.floor(
                             difficultymultiplier *
                                 ((getRandomInt(m.spy, 3) ? 1 : 0.5) *
@@ -1591,26 +1592,28 @@ const popups = [
 
 const information = [
     {
-        title: "<strong class = 'color-r'>Failure</strong>",
+        title: "<strong class = 'color-r'>Defeat</strong>",
         size: '30px',
         description: 'The enemy defeated you',
-        choosetext(poplost) {
-            this.description = `The enemy defeated you<br>Casualties: <strong class = 'color-r'>${shorten(
+        choosetext(poplost, ePopLost) {
+            this.description = `You were unable to repel the raiders <br>Casualties: <strong class = 'color-r'>${shorten(
                 poplost
+            )}</strong><br>Enemy Casualties: <strong class = 'color-g'>${shorten(
+                ePopLost
             )}</strong>`;
-            this.choices[0].casualties=poplost
+            this.choices[0].casualties = poplost;
         },
         choices: [
             {
-                casualties:0,
+                casualties: 0,
                 text: 'close',
                 effect() {
-                    currentpop-=this.casualties
+                    currentpop -= this.casualties;
                     document.getElementById('popup_block_buttons').style.display = 'none';
                     document.getElementById('popup').style.display = 'none';
-                    removebuildings(getRandomInt(3,5))
-                    start()
-                    displayUI()
+                    removebuildings(getRandomInt(3, 5));
+                    start();
+                    displayUI();
                 },
             },
         ],
@@ -1618,20 +1621,23 @@ const information = [
     {
         title: "<strong class = 'color-g'>Victory</strong>",
         size: '30px',
-        description:
-            "You repelled the raiders. <strong class = 'color-g'>+33% population</strong>",
-        choosetext(amount) {
-            this.description = `You repelled the raiders.<br>Casualties: <strong class = 'color-r'>${shorten(amount)}</strong>`;
-            this.choices[0].casualties=amount
+        description: "You repelled the raiders. <strong class = 'color-g'>+33% population</strong>",
+        choosetext(amount, ePopLost) {
+            this.description = `You repelled the raiders.<br>Casualties: <strong class = 'color-r'>${shorten(
+                amount
+            )}</strong><br></strong><br>Enemy Casualties: <strong class = 'color-g'>${shorten(
+                ePopLost
+            )}</strong>`;
+            this.choices[0].casualties = amount;
         },
         choices: [
             {
-                casualties:0,
+                casualties: 0,
                 text: 'close',
                 effect() {
                     currentpop -= this.casualties;
                     reputation += getRandomInt(5, 10);
-                    start()
+                    start();
                     document.getElementById('popup_block_buttons').style.display = 'none';
                     document.getElementById('popup').style.display = 'none';
                     displayUI();
