@@ -132,7 +132,9 @@ const popups = [
             ) {
                 choicesdisabled.push(1);
             }
-
+            if (military <= 0) {
+                choicesdisabled.push(0);
+            }
             this.power = Math.floor(
                 difficultymultiplier *
                     ((getRandomInt(m.spy, 3) ? 1 : 0.5) *

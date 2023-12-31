@@ -138,6 +138,7 @@ function battlescreen(battleType, armyPower) {
     blueTotalPower = 0;
     redPower = 0;
     bluePower = 0;
+    let divisionNumber = 0;
     switch (battleType) {
         case 'raid':
             const randomSpawn =
@@ -149,26 +150,43 @@ function battlescreen(battleType, armyPower) {
                         isLand(randomSpawn.x + j, randomSpawn.y + i) &&
                         !hasBorder({ x: randomSpawn.x + j, y: randomSpawn.y + i })
                     ) {
+                        divisionNumber++;
+                    }
+                }
+            }
+            divisionNumber = Math.min(divisionNumber, armyPower);
+            let currentDivisionNumber = 0;
+            for (let i = -4; i <= 4; i++) {
+                for (let j = -4; j <= 4; j++) {
+                    if (
+                        isLand(randomSpawn.x + j, randomSpawn.y + i) &&
+                        !hasBorder({ x: randomSpawn.x + j, y: randomSpawn.y + i })
+                    ) {
                         redArmies.push(
                             new army(
                                 (randomSpawn.x + j) * 20,
                                 (randomSpawn.y + i) * 20,
-                                0,
+                                armyPower / divisionNumber,
                                 'I',
                                 'red',
                                 'raid',
                                 getRandomItem(playerBorders)
                             )
                         );
+                        currentDivisionNumber++;
+                        if (divisionNumber < currentDivisionNumber) {
+                            break;
+                        }
                     }
                 }
             }
             break;
     }
+    let currentRedPower = 0;
     for (const a of redArmies) {
-        a.power = Math.floor(armyPower / redArmies.length);
+        currentRedPower += a.power;
     }
-    redTotalPower = power;
+    redTotalPower = currentRedPower;
     placeGrid.style.display = 'flex';
     redPower = redTotalPower;
     bluePower = blueTotalPower;
@@ -531,14 +549,17 @@ function mainFunction() {
             }
         }
         if (redArmies.length == 0) {
-            isSelecting = true;
+            battling = false;
             information[1].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
             displaypopup(1, information);
+            return;
         }
         if (blueArmies.length == 0 || raidProgress >= 20000) {
-            isSelecting = true;
+            debugger;
+            battling = false;
             information[0].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
             displaypopup(0, information);
+            return;
         }
         for (const a of redArmies) {
             if (isLand(Math.floor(a.x / 20), Math.floor(a.y / 20))) {
@@ -912,7 +933,7 @@ function renderArmies() {
                 ctx.fill();
                 break;
         }
-        ctx.fillStyle = 'black';
+        /* ctx.fillStyle = 'black';
         for (const pos of redArmies[i].destination) {
             ctx.fillRect(
                 (pos.x - armyScrollX) * armyZoom,
@@ -920,7 +941,7 @@ function renderArmies() {
                 10 * armyZoom,
                 10 * armyZoom
             );
-        }
+        } */
     }
 
     ctx.fillStyle = 'blue';

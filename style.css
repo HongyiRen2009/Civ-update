@@ -234,6 +234,9 @@ input[type='range']::-webkit-slider-thumb {
     margin: 5%;
     background-color: var(--button-color);
 }
+.divisionContainer > p {
+    font-size: 0.75vw;
+}
 .divisionXpBar {
     margin-top: 5%;
     width: 80%;
@@ -243,8 +246,7 @@ input[type='range']::-webkit-slider-thumb {
 .divisionXpText {
     margin: 0;
     text-align: center;
-    position: relative;
-    bottom: 6%;
+    line-height: 100%;
 }
 .info-box:hover .extra-info {
     animation: fadeIn 5s;
