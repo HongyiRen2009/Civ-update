@@ -423,38 +423,35 @@ function displayUI(turn = false) {
             unemployed += ef.unemployed;
         }
     }
-    for (len = gridstats.length, i = 0; i < len; i++) {
-        if (!gridstats[i].disabled) {
-            if (unemployed >= gridstats[i].employmentrequired) {
-                population += gridstats[i].population;
-                if (gridstats[i].fish && turn) {
-                    gridstats[i].food = getRandomInt(10, 15);
+    for (const pos in gridstats) {
+        if (!gridstats[pos].disabled) {
+            if (unemployed >= gridstats[pos].employmentrequired) {
+                population += gridstats[pos].population;
+                if (gridstats[pos].fish && turn) {
+                    gridstats[pos].food = getRandomInt(10, 15);
                 }
-                if (gridstats[i].index == 11) {
+                if (gridstats[pos].index == 11) {
                     trainingXp += 20;
                 }
-                food += gridstats[i].food;
-                maxPersonnel += gridstats[i].military;
-                xpgained += gridstats[i].xp;
-                resourcesgained += gridstats[i].resources;
+                food += gridstats[pos].food;
+                maxPersonnel += gridstats[pos].military;
+                xpgained += gridstats[pos].xp;
+                resourcesgained += gridstats[pos].resources;
 
-                unemployed -= gridstats[i].employmentrequired;
+                unemployed -= gridstats[pos].employmentrequired;
             } else {
-                gridstats[i].disabled = true;
-                switch (gridstats[i].index) {
+                gridstats[pos].disabled = true;
+                switch (gridstats[pos].index) {
                     case 18:
                         for (i = 0, len = p.cities.length; i < len; i++) {
                             if (
-                                p.cities[i].x == gridstats[buildingindex].citypos.x &&
-                                p.cities[i].y == gridstats[buildingindex].citypos.y
+                                p.cities[i].x == gridstats[pos].citypos.x &&
+                                p.cities[i].y == gridstats[pos].citypos.y
                             ) {
                                 p.cities.splice(i, 1);
                             }
                         }
                         recalcBuildings();
-                    case 19:
-                        modifiers.food -= 2;
-                        modifiers.resources -= 2;
                 }
                 renderend = true;
             }
@@ -477,12 +474,14 @@ function displayUI(turn = false) {
         unemployed -= d.power;
     }
     food +=
-        Math.ceil(food * (modifiers.food / 10) * (1 + weathermod)) -
-        (siege ? Math.ceil(food * (modifiers.food / 10)) * 0.3 : 0);
+        Math.ceil(((food * (modifiers.food + buildingModifiers.food)) / 10) * (1 + weathermod)) -
+        (siege ? Math.ceil((food * (modifiers.food + buildingModifiers.food)) / 10) * 0.3 : 0);
     resourcesgained +=
-        Math.ceil(resourcesgained * (modifiers.resources / 10)) -
+        Math.ceil((resourcesgained * (modifiers.resources + buildingModifiers.resources)) / 10) -
         (siege ? Math.ceil(resourcesgained * (modifiers.resources / 10)) * 0.3 : 0);
-    population += Math.ceil((population * modifiers.population) / 10);
+    population += Math.ceil(
+        (population * (modifiers.population + buildingModifiers.population)) / 10
+    );
     for (const ef of temporaryeffects) {
         if (ef.type == 'add') {
             food += ef.food;

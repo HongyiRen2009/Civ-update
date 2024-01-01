@@ -64,7 +64,7 @@ const dev = {
         resources = 99999999999;
         research_points = 99999999999;
         currentpop = 99999999999;
-        gridstats.push({
+        gridstats[0] = {
             disabled: false,
             employmentrequired: 0,
             food: 99999999999,
@@ -76,7 +76,7 @@ const dev = {
             resourcerefund: 0,
             resources: 99999999999,
             xp: 0,
-        });
+        };
         tech.flat().map((t) => {
             t.effect();
             t.tier++;
