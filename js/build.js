@@ -506,8 +506,8 @@ const p = {
             near: 'building',
             tab: 'Misc',
             effect() {
-                modifiers.food += 2;
-                modifiers.resources += 2;
+                buildingModifiers.food += 2;
+                buildingModifiers.resources += 2;
                 resources -= 200;
                 unemployed -= 15;
             },
@@ -577,7 +577,7 @@ for (const un of p.pieceROM) {
     reset.push(un.unlocked);
 }
 
-function removebuildings(intensity = 4, onhill = false) {
+/* function removebuildings(intensity = 4, onhill = false) {
     let casualties = 0;
     let amount = 0;
 
@@ -642,7 +642,7 @@ function removebuildings(intensity = 4, onhill = false) {
     render();
     displayUI();
     return casualties;
-}
+} */
 function isallowed() {
     localallowed = false;
     for (let i = 0, len = piece.length; i != len; i++) {
@@ -1037,33 +1037,33 @@ function render() {
     ctx.fillStyle = 'rgba(0,0,0,1)';
 
     if (psettings.noimage) {
-        for (len = gridstats.length, i = 0; i < len; i++) {
+        for (const num in gridstats) {
             ctx.beginPath();
 
-            if (gridstats[i].disabled) {
+            if (gridstats[num].disabled) {
                 ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-            } else if (!gridstats[i].inrange) {
+            } else if (!gridstats[num].inrange) {
                 ctx.strokeStyle = 'rgba(255,0,0,1)';
             } else {
                 ctx.strokeStyle = 'rgba(0,0,0,1)';
             }
 
-            for (let j = 0, len = gridstats[i].positions.length; j != len; j++) {
+            for (let j = 0, len = gridstats[num].positions.length; j != len; j++) {
                 if (
-                    gridstats[i].positions[j].x - 1 < scrollX + widthmax &&
-                    gridstats[i].positions[j].x + 1 > scrollX
+                    gridstats[num].positions[j].x - 1 < scrollX + widthmax &&
+                    gridstats[num].positions[j].x + 1 > scrollX
                 )
                     ctx.fillText(
-                        gridstats[i].letter,
-                        gridstats[i].positions[j].x * zoom +
+                        gridstats[num].letter,
+                        gridstats[num].positions[j].x * zoom +
                             zoom / 2 -
-                            gridstats[i].letter.length * 4 -
+                            gridstats[num].letter.length * 4 -
                             scrollX * zoom,
-                        gridstats[i].positions[j].y * zoom + zoom / 2 - scrollY * zoom
+                        gridstats[num].positions[j].y * zoom + zoom / 2 - scrollY * zoom
                     );
                 ctx.rect(
-                    (gridstats[i].positions[j].x - scrollX) * zoom,
-                    (gridstats[i].positions[j].y - scrollY) * zoom,
+                    (gridstats[num].positions[j].x - scrollX) * zoom,
+                    (gridstats[num].positions[j].y - scrollY) * zoom,
                     (zoom * 19) / 20,
                     (zoom * 19) / 20
                 );
@@ -1079,36 +1079,36 @@ function render() {
             ctx.rect((pos.x - scrollX) * zoom, (pos.y - scrollY) * zoom, zoom, zoom);
         }
     } else {
-        for (len = gridstats.length, i = 0; i < len; i++) {
+        for (const num in gridstats) {
             ctx.beginPath();
 
-            for (let j = 0, len = gridstats[i].positions.length; j != len; j++) {
+            for (let j = 0, len = gridstats[num].positions.length; j != len; j++) {
                 if (
-                    gridstats[i].positions[j].x - 1 < scrollX + widthmax &&
-                    gridstats[i].positions[j].x + 1 > scrollX
+                    gridstats[num].positions[j].x - 1 < scrollX + widthmax &&
+                    gridstats[num].positions[j].x + 1 > scrollX
                 ) {
-                    if (gridstats[i].disabled) {
+                    if (gridstats[num].disabled) {
                         ctx.drawImage(
                             buildimg2,
-                            gridstats[i].positions[j].img.dx,
-                            gridstats[i].positions[j].img.dy,
+                            gridstats[num].positions[j].img.dx,
+                            gridstats[num].positions[j].img.dy,
                             20,
                             20,
-                            (gridstats[i].positions[j].x - scrollX) * zoom,
-                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            (gridstats[num].positions[j].x - scrollX) * zoom,
+                            (gridstats[num].positions[j].y - scrollY) * zoom,
                             zoom,
                             zoom
                         );
                         ctx.stroke();
-                    } else if (!gridstats[i].inrange) {
+                    } else if (!gridstats[num].inrange) {
                         ctx.drawImage(
                             buildimg3,
-                            gridstats[i].positions[j].img.dx,
-                            gridstats[i].positions[j].img.dy,
+                            gridstats[num].positions[j].img.dx,
+                            gridstats[num].positions[j].img.dy,
                             20,
                             20,
-                            (gridstats[i].positions[j].x - scrollX) * zoom,
-                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            (gridstats[num].positions[j].x - scrollX) * zoom,
+                            (gridstats[num].positions[j].y - scrollY) * zoom,
                             zoom,
                             zoom
                         );
@@ -1116,12 +1116,12 @@ function render() {
                     } else {
                         ctx.drawImage(
                             buildimg,
-                            gridstats[i].positions[j].img.dx,
-                            gridstats[i].positions[j].img.dy,
+                            gridstats[num].positions[j].img.dx,
+                            gridstats[num].positions[j].img.dy,
                             20,
                             20,
-                            (gridstats[i].positions[j].x - scrollX) * zoom,
-                            (gridstats[i].positions[j].y - scrollY) * zoom,
+                            (gridstats[num].positions[j].x - scrollX) * zoom,
+                            (gridstats[num].positions[j].y - scrollY) * zoom,
                             zoom,
                             zoom
                         );
@@ -1154,9 +1154,10 @@ function recalcBuildings() {
     if (difficulty < 10) {
         return;
     }
-    outofrange = gridstats.length;
+    outofrange = Object.keys(gridstats).length;
 
-    for (const building of gridstats) {
+    for (const num in gridstats) {
+        let building = gridstats[num];
         building.inrange = false;
         for (const city of p.cities) {
             for (const position of building.positions) {
@@ -1300,6 +1301,7 @@ document.onmouseup = function () {
                     )
                 );
                 division.placed = true;
+                blueArmies[blueArmies.length - 1].index = division.index;
                 placedTiles.add(tilecode(j - 10, i + 10));
 
                 divisionCount++;
@@ -1533,8 +1535,9 @@ canvas.onmousedown = function (event) {
 
             const oldresources = resources;
             p.pieceROM[p_index].effect();
+            const uniqueNum = uniqueNumber();
 
-            gridstats.push({
+            gridstats[uniqueNum] = {
                 index: p_index,
                 letter: letter,
                 population: p.population,
@@ -1548,11 +1551,14 @@ canvas.onmousedown = function (event) {
                 resourcerefund: oldresources - resources,
                 disabled: false,
                 inrange: isInRange,
-            });
+            };
+            for (const pos of gridposition) {
+                buildstats[tilecode(pos.x, pos.y)] = uniqueNum;
+            }
             xp += Math.ceil((oldresources - resources) * (1 + techstats.innovation) * 2);
             first_turn = false;
             if (p_index == 18) {
-                gridstats[gridstats.length - 1].citypos = {
+                gridstats[uniqueNum].citypos = {
                     x: position.x,
                     y: position.y,
                 };
@@ -1582,8 +1588,7 @@ canvas.onmousedown = function (event) {
                 }
             }
         } else if (removing && grid[position.y].includes(position.x)) {
-            let found = false;
-            let buildingindex = 0;
+            let buildingindex = buildstats[tilecode(position.x, position.y)];
             if (roadgrid[JSON.stringify({ x: position.x, y: position.y })] != undefined) {
                 grid[position.y].splice(grid[position.y].indexOf(position.x));
                 delete roadgrid[JSON.stringify({ x: position.x, y: position.y })];
@@ -1596,25 +1601,13 @@ canvas.onmousedown = function (event) {
                 render();
                 return;
             }
-            for (let i = 0, len = gridstats.length; i < len; i++) {
-                for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
-                    if (
-                        gridstats[i].positions[j].x == position.x &&
-                        gridstats[i].positions[j].y == position.y
-                    ) {
-                        buildingindex = i;
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
 
             for (const el of gridstats[buildingindex].positions) {
                 const indexx = grid[el.y].indexOf(el.x);
                 grid[el.y].splice(indexx, 1);
                 repairbreakamount += 1;
                 breaksound.play();
+                delete buildstats[el];
             }
             resources += Math.floor(gridstats[buildingindex].resourcerefund / 2);
             buildingamounts[gridstats[buildingindex].index] -= 1;
@@ -1632,31 +1625,14 @@ canvas.onmousedown = function (event) {
                     }
                     recalcBuildings();
                     break;
-                case '19':
-                    modifiers.food -= 2;
-                    modifiers.resources -= 2;
-                    break;
             }
-            gridstats.splice(buildingindex, 1);
+            delete gridstats[buildingindex];
 
             render();
             displayUI();
         } else if (repairing && grid[position.y].includes(position.x)) {
-            let found = false;
-            let buildingindex = 0;
-            for (let i = 0, len = gridstats.length; i < len; i++) {
-                for (let j = 0, len = gridstats[i].positions.length; j < len; j++) {
-                    if (
-                        gridstats[i].positions[j].x == position.x &&
-                        gridstats[i].positions[j].y == position.y
-                    ) {
-                        buildingindex = i;
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
+            let buildingindex = buildstats[tilecode(position.x, position.y)];
+
             if (
                 gridstats[buildingindex].disabled == true &&
                 resources >= Math.round(gridstats[buildingindex].resourcerefund / 2) &&
@@ -1750,7 +1726,6 @@ document.onkeydown = function (event) {
             document.getElementById('popup_block_buttons').style.display != 'block' &&
             canvas.style.display == 'block'
         ) {
-            
             if (psettings.arrowkeys) {
                 switch (event.key) {
                     case 'ArrowUp':

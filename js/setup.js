@@ -79,7 +79,8 @@ const max = {
 };
 const grid = [];
 const tabs = ['Housing', 'Farms', 'Military', 'Mines', 'Misc'];
-const gridstats = [];
+let gridstats = {};
+let buildstats = {};
 const wars = [];
 const psettings = {
     noimage: false,
@@ -221,6 +222,7 @@ class army {
         this.selected = false;
         this.animationTime = -6;
         this.target = null;
+        this.index = 0;
         this.arrowCoolDown = 0;
         this.type = type;
         this.targetRotation = 0;
@@ -257,6 +259,7 @@ class arrow {
         this.side = side;
     }
 }
+const armyInfo = [];
 let currentArmyGroup = '';
 const placedTiles = new Set();
 let sutibleRaiderSpawns = new Set();
@@ -329,6 +332,7 @@ let modifiers = {
     resources: 0,
     military: 0,
 };
+let buildingModifiers = { population: 0, food: 0, resources: 0, military: 0 };
 const marketitems = [];
 let tab = 'Housing';
 let punishamount = 0;

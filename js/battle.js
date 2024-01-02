@@ -1,3 +1,4 @@
+let civCasualties = 0;
 //pathfinding
 class node {
     constructor(start, end, x, y, parent) {
@@ -69,6 +70,12 @@ function aStar(start, end) {
 }
 
 function battlescreen(battleType, armyPower) {
+    armyInfo.length = 0;
+    for (let i = 0; i < divisions.length; i++) {
+        divisions[i].index = i;
+        armyInfo.push(divisions[i].power);
+    }
+    civCasualties = 0;
     placedTiles.clear();
     armyScrollX = scrollX * 20;
     armyScrollY = scrollY * 20;
@@ -138,6 +145,7 @@ function battlescreen(battleType, armyPower) {
     blueTotalPower = 0;
     redPower = 0;
     bluePower = 0;
+    let divisionNumber = 0;
     switch (battleType) {
         case 'raid':
             const randomSpawn =
@@ -149,26 +157,43 @@ function battlescreen(battleType, armyPower) {
                         isLand(randomSpawn.x + j, randomSpawn.y + i) &&
                         !hasBorder({ x: randomSpawn.x + j, y: randomSpawn.y + i })
                     ) {
+                        divisionNumber++;
+                    }
+                }
+            }
+            divisionNumber = Math.min(divisionNumber, armyPower);
+            let currentDivisionNumber = 0;
+            for (let i = -4; i <= 4; i++) {
+                for (let j = -4; j <= 4; j++) {
+                    if (
+                        isLand(randomSpawn.x + j, randomSpawn.y + i) &&
+                        !hasBorder({ x: randomSpawn.x + j, y: randomSpawn.y + i })
+                    ) {
                         redArmies.push(
                             new army(
                                 (randomSpawn.x + j) * 20,
                                 (randomSpawn.y + i) * 20,
-                                0,
+                                armyPower / divisionNumber,
                                 'I',
                                 'red',
                                 'raid',
                                 getRandomItem(playerBorders)
                             )
                         );
+                        currentDivisionNumber++;
+                        if (divisionNumber < currentDivisionNumber) {
+                            break;
+                        }
                     }
                 }
             }
             break;
     }
+    let currentRedPower = 0;
     for (const a of redArmies) {
-        a.power = Math.floor(armyPower / redArmies.length);
+        currentRedPower += a.power;
     }
-    redTotalPower = power;
+    redTotalPower = currentRedPower;
     placeGrid.style.display = 'flex';
     redPower = redTotalPower;
     bluePower = blueTotalPower;
@@ -531,14 +556,24 @@ function mainFunction() {
             }
         }
         if (redArmies.length == 0) {
-            isSelecting = true;
-            information[1].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
+            battling = false;
+            information[1].choosetext(
+                blueTotalPower - bluePower,
+                redTotalPower - redPower,
+                civCasualties
+            );
             displaypopup(1, information);
+            return;
         }
         if (blueArmies.length == 0 || raidProgress >= 20000) {
-            isSelecting = true;
-            information[0].choosetext(blueTotalPower - bluePower, redTotalPower - redPower);
+            battling = false;
+            information[0].choosetext(
+                blueTotalPower - bluePower,
+                redTotalPower - redPower,
+                civCasualties
+            );
             displaypopup(0, information);
+            return;
         }
         for (const a of redArmies) {
             if (isLand(Math.floor(a.x / 20), Math.floor(a.y / 20))) {
@@ -575,13 +610,40 @@ function mainFunction() {
                                     a.destination.push(leastCoord);
                                 } else if (a.destination.length == 0) {
                                     if (
-                                        playerBorders.has(
+                                        buildstats[
                                             tilecode(Math.floor(a.x / 20), Math.floor(a.y / 20))
-                                        )
+                                        ] != undefined
                                     ) {
                                         raidProgress++;
+                                        const currentBuilding =
+                                            gridstats[
+                                                buildstats[
+                                                    tilecode(
+                                                        Math.floor(a.x / 20),
+                                                        Math.floor(a.y / 20)
+                                                    )
+                                                ]
+                                            ];
+                                        if (
+                                            (currentBuilding.disabled =
+                                                false &&
+                                                Math.random() * currentBuilding.resourcerefund <
+                                                    0.05 &&
+                                                currentBuilding.index != '18')
+                                        ) {
+                                            currentBuilding.disabled = true;
+                                            civCasualties += currentBuilding.population;
+                                        }
                                     }
-
+                                    if (
+                                        distance(a.x, a.y, a.targetCoord.x, a.targetCoord.y) <= 30
+                                    ) {
+                                        const newTarget = tiledecode(getRandomItem(playerBorders));
+                                        a.targetCoord = {
+                                            x: newTarget.x * 20,
+                                            y: newTarget.y * 20,
+                                        };
+                                    }
                                     a.destination.push(
                                         ...aStar(
                                             { x: Math.floor(a.x / 20), y: Math.floor(a.y / 20) },
@@ -912,7 +974,7 @@ function renderArmies() {
                 ctx.fill();
                 break;
         }
-        ctx.fillStyle = 'black';
+        /* ctx.fillStyle = 'black';
         for (const pos of redArmies[i].destination) {
             ctx.fillRect(
                 (pos.x - armyScrollX) * armyZoom,
@@ -920,12 +982,13 @@ function renderArmies() {
                 10 * armyZoom,
                 10 * armyZoom
             );
-        }
+        } */
     }
 
     ctx.fillStyle = 'blue';
     for (let i = blueArmies.length - 1; i >= 0; i--) {
         if (blueArmies[i].power <= 0) {
+            armyInfo[blueArmies[i].index] = 0;
             blueArmies.splice(i, 1);
             continue;
         }

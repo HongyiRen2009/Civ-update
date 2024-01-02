@@ -23,9 +23,10 @@ function divisionsScreen() {
     canvas.style.display = 'none';
     canvas2.style.display = 'none';
     const ele = document.getElementsByClassName('divisionContainer');
-    for (const el of ele) {
-        el.remove();
+    for (let i = ele.length - 1; i >= 0; i--) {
+        ele[i].remove();
     }
+
     for (let i = 0; i < divisions.length; i++) {
         displayDivision(divisions[i], i);
     }
@@ -55,7 +56,9 @@ function addDivision(type) {
 
     for (const el of dSliders) {
         el.value = military / Math.max(divisions.length, 1);
-        el.max = Math.floor(Math.min(maxPersonnel - military, unemployed) / divisions.length);
+        el.max = Math.floor(
+            Math.min(maxPersonnel - military, unemployed + military) / divisions.length
+        );
 
         el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
             ((el.value - el.min) / (el.max - el.min)) * 100
@@ -81,10 +84,22 @@ function displayDivision(division, index) {
     divisionSlider.type = 'range';
     divisionSlider.id = index;
     divisionSlider.className = 'divisionSlider';
-    divisionSlider.max = Math.floor(Math.min(maxPersonnel, unemployed) / divisions.length);
+    divisionSlider.max = Math.floor(
+        Math.min(maxPersonnel, unemployed + military) / divisions.length
+    );
     divisionSlider.min = 0;
-    divisionSlider.value = division.power;
-
+    setTimeout(function () {
+        divisionSlider.value = division.power;
+        divisionSlider.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
+            ((divisionSlider.value - divisionSlider.min) /
+                (divisionSlider.max - divisionSlider.min)) *
+            100
+        }%, gray ${
+            ((divisionSlider.value - divisionSlider.min) /
+                (divisionSlider.max - divisionSlider.min)) *
+            100
+        }%, gray 100%)`;
+    }, 0);
     divisionSlider.oninput = function () {
         for (const d of divisions) {
             d.power = parseInt(divisionSlider.value);
@@ -113,7 +128,7 @@ function displayDivision(division, index) {
             'Military: ' + shorten(military) + '/' + shorten(maxPersonnel);
         const ele = document.getElementsByClassName('divisionSlider');
         for (const el of ele) {
-            el.max = Math.floor(Math.min(maxPersonnel, unemployed) / divisions.length);
+            el.max = Math.floor(Math.min(maxPersonnel, unemployed + military) / divisions.length);
             el.style.background = `linear-gradient(to right, #755e2b 0%, #755e2b ${
                 ((el.value - el.min) / (el.max - el.min)) * 100
             }%, gray ${((el.value - el.min) / (el.max - el.min)) * 100}%, gray 100%)`;
@@ -186,12 +201,16 @@ function displayDivision(division, index) {
     divisionContainer.appendChild(divisionXpBar);
     divisionContainer.appendChild(divisionTitle);
     divisionContainer.appendChild(divisionGroupLabel);
+
     divisionContainer.appendChild(divisionGroupsContainer);
+
     divisionContainer.appendChild(divisionPower);
     divisionContainer.appendChild(divisionSlider);
+
     document
         .getElementById('addDivisionsFlex')
         .insertBefore(divisionContainer, document.getElementById('addDivisionButton'));
+
     displayUI();
     for (let i = 0; i < document.getElementsByClassName('warning-box').length; i++) {
         document.getElementsByClassName('warning-box')[i].style.display = 'none';

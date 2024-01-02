@@ -847,6 +847,7 @@ function save(bindex) {
         'griditems' + bindex,
         JSON.stringify({
             grid,
+            buildstats,
             roadgrid,
             gridstats,
             tilestats,
@@ -882,6 +883,7 @@ function save(bindex) {
             reputation,
             difficulty,
             modifiers,
+            buildingModifiers,
             currentpop,
             military,
             resources,
@@ -986,9 +988,7 @@ function load(bindex) {
     }
     research_points = pstats.research_points;
     armyGroups = pstats.armyGroups;
-    for (const el of griditems.gridstats) {
-        gridstats.push(el);
-    }
+
     const localmod = pstats.modifiers;
     for (const el of pstats.temporaryeffects) {
         temporaryeffects.push(el);
@@ -1012,6 +1012,8 @@ function load(bindex) {
         marketitems.push(el);
     }
     tilestats = griditems.tilestats;
+    buildstats = griditems.buildstats;
+    gridstats = griditems.gridstats;
     for (const tile in tilestats) {
         const tilePos = tiledecode(tile);
         ctx3.fillStyle = tiles[tilestats[tile]].color;
@@ -1050,13 +1052,14 @@ function load(bindex) {
     max.left = localscrolldata[4].left;
     max.right = localscrolldata[4].right;
 
-    if (gridstats.length > 0 || Object.keys(roadgrid).length > 0) {
+    if (Object.keys(gridstats).length > 0 || Object.keys(roadgrid).length > 0) {
         first_turn = false;
     }
     modifiers.food = localmod.food;
     modifiers.population = localmod.population;
     modifiers.resources = localmod.resources;
     modifiers.military = localmod.military;
+    buildingModifiers = pstats.buildingModifiers;
     document.getElementById('year_label').innerHTML = 'Year: ' + difficulty;
     displaytab();
     displayUI();
@@ -1082,7 +1085,7 @@ function newgame(difficult) {
     }
     armyGroups = ['none'];
     divisions.length = 0;
-    gridstats.length = 0;
+    gridstats = {};
     tilestats = {};
     grid.length = 0;
     weathermod = 0;
@@ -1141,7 +1144,7 @@ function newgame(difficult) {
     m.scout = false;
     m.shield = 0;
     grid.length = 0;
-    gridstats.length = 0;
+    gridstats = {};
     seed = Math.random() * 10 ** 20;
     perlin = new Perlin(nodes[0], nodes[0], seed);
     perlin2 = new Perlin(nodes[1], nodes[1], seed + 1);
@@ -1199,6 +1202,18 @@ function newgame(difficult) {
     }
     render();
     document.getElementById('year_label').innerHTML = 'Year: ' + difficulty;
+}
+function uniqueNumber() {
+    var date = Date.now();
+
+    // If created at same millisecond as previous
+    if (date <= uniqueNumber.previous) {
+        date = ++uniqueNumber.previous;
+    } else {
+        uniqueNumber.previous = date;
+    }
+
+    return date - 1704052542615;
 }
 function getRandomInt(min, max) {
     min = Math.ceil(min);
